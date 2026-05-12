@@ -61,7 +61,7 @@ class PostgresCursor:
 
 class PostgresConnection:
     def __init__(self, url: str) -> None:
-        self.connection = psycopg.connect(url, row_factory=dict_row)
+        self.connection = psycopg.connect(url, row_factory=dict_row, prepare_threshold=None)
 
     def __enter__(self) -> "PostgresConnection":
         return self
