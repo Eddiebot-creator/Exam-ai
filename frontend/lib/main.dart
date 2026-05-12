@@ -380,6 +380,19 @@ class ApiClient {
     return _decodeList(response);
   }
 
+  Future<bool> ping() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/docs'))
+          .timeout(const Duration(seconds: 8));
+      return response.statusCode < 500;
+    } on SocketException {
+      throw ApiException.offline(baseUrl);
+    } on TimeoutException {
+      throw ApiException.timeout(baseUrl);
+    }
+  }
+
   Future<http.Response> _get(String path) async {
     try {
       return await http
@@ -593,13 +606,95 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final api = ApiClient();
+  ApiClient api = ApiClient();
   final nameController = TextEditingController(text: 'Demo Student');
   final emailController = TextEditingController(text: 'student@example.com');
   final passwordController = TextEditingController(text: 'password123');
+  final apiBaseController = TextEditingController();
   bool isSignup = false;
   bool loading = false;
+  bool checkingConnection = false;
+  bool showApiSettings = false;
   bool obscurePassword = true;
+  String? connectionError;
+
+  @override
+  void initState() {
+    super.initState();
+    loadApiBase();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    apiBaseController.dispose();
+    super.dispose();
+  }
+
+  Future<void> loadApiBase() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('api_base_url');
+    api = ApiClient(
+        baseUrl:
+            saved?.trim().isNotEmpty == true ? saved!.trim() : api.baseUrl);
+    apiBaseController.text = api.baseUrl;
+    if (mounted) setState(() {});
+  }
+
+  String normalizedApiBase() {
+    final raw = apiBaseController.text.trim();
+    if (raw.isEmpty) return api.baseUrl;
+    final withScheme = raw.startsWith('http://') || raw.startsWith('https://')
+        ? raw
+        : 'https://$raw';
+    return withScheme.endsWith('/')
+        ? withScheme.substring(0, withScheme.length - 1)
+        : withScheme;
+  }
+
+  Future<void> saveApiBase() async {
+    final next = normalizedApiBase();
+    final uri = Uri.tryParse(next);
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      setState(() => connectionError =
+          'Enter a valid API URL, for example https://examai-api.onrender.com');
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('api_base_url', next);
+    setState(() {
+      api = ApiClient(baseUrl: next);
+      apiBaseController.text = next;
+      connectionError = null;
+    });
+  }
+
+  Future<void> testConnection() async {
+    await saveApiBase();
+    setState(() {
+      checkingConnection = true;
+      connectionError = null;
+    });
+    try {
+      final ok = await api.ping();
+      if (!mounted) return;
+      showMessage(
+          context,
+          ok
+              ? 'Backend connected.'
+              : 'Backend responded, but not as expected.');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        connectionError = error.toString();
+        showApiSettings = true;
+      });
+    } finally {
+      if (mounted) setState(() => checkingConnection = false);
+    }
+  }
 
   Future<void> submit() async {
     final email = emailController.text.trim();
@@ -612,6 +707,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
     setState(() => loading = true);
     try {
+      await saveApiBase();
       final user = isSignup
           ? await api.register(name, email, password)
           : await api.login(email, password);
@@ -623,7 +719,11 @@ class _AuthScreenState extends State<AuthScreen> {
       );
     } catch (error) {
       if (!mounted) return;
-      showMessage(context, error.toString());
+      setState(() {
+        connectionError = error.toString();
+        showApiSettings =
+            error is ApiException || error.toString().contains('backend');
+      });
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -633,50 +733,62 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 980),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final wide = constraints.maxWidth > 760;
-                  final form = _AuthForm(
-                    isSignup: isSignup,
-                    loading: loading,
-                    obscurePassword: obscurePassword,
-                    nameController: nameController,
-                    emailController: emailController,
-                    passwordController: passwordController,
-                    onSubmit: submit,
-                    onToggleSignup: () => setState(() => isSignup = !isSignup),
-                    onTogglePassword: () =>
-                        setState(() => obscurePassword = !obscurePassword),
-                  );
-                  final stage = _AuthStage(isSignup: isSignup);
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 320),
-                    child: wide
-                        ? Row(
-                            key: const ValueKey('wide-auth'),
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(child: stage),
-                              const SizedBox(width: 24),
-                              SizedBox(width: 420, child: form),
-                            ],
-                          )
-                        : Column(
-                            key: const ValueKey('compact-auth'),
-                            children: [
-                              stage,
-                              const SizedBox(height: 18),
-                              form,
-                            ],
-                          ),
-                  );
-                },
+      body: AuthBackdrop(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1120),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth > 820;
+                    final form = _AuthForm(
+                      isSignup: isSignup,
+                      loading: loading,
+                      obscurePassword: obscurePassword,
+                      connectionError: connectionError,
+                      showApiSettings: showApiSettings,
+                      checkingConnection: checkingConnection,
+                      apiBaseController: apiBaseController,
+                      currentApiBase: api.baseUrl,
+                      nameController: nameController,
+                      emailController: emailController,
+                      passwordController: passwordController,
+                      onSubmit: submit,
+                      onToggleSignup: () =>
+                          setState(() => isSignup = !isSignup),
+                      onTogglePassword: () =>
+                          setState(() => obscurePassword = !obscurePassword),
+                      onToggleApiSettings: () =>
+                          setState(() => showApiSettings = !showApiSettings),
+                      onTestConnection: testConnection,
+                    );
+                    final stage =
+                        _AuthStage(isSignup: isSignup, apiBase: api.baseUrl);
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      child: wide
+                          ? Row(
+                              key: const ValueKey('wide-auth'),
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(flex: 6, child: stage),
+                                const SizedBox(width: 24),
+                                Expanded(flex: 5, child: form),
+                              ],
+                            )
+                          : Column(
+                              key: const ValueKey('compact-auth'),
+                              children: [
+                                stage,
+                                const SizedBox(height: 18),
+                                form,
+                              ],
+                            ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -691,62 +803,182 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
+class AuthBackdrop extends StatelessWidget {
+  const AuthBackdrop({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            left: -80,
+            top: 80,
+            child: Transform.rotate(
+              angle: -0.18,
+              child: Container(
+                width: 420,
+                height: 220,
+                decoration: BoxDecoration(
+                  color: (dark ? AppTheme.teal : AppTheme.mint)
+                      .withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -60,
+            bottom: 70,
+            child: Transform.rotate(
+              angle: 0.14,
+              child: Container(
+                width: 360,
+                height: 180,
+                decoration: BoxDecoration(
+                  color: AppTheme.coral.withValues(alpha: dark ? 0.16 : 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
 class _AuthStage extends StatelessWidget {
-  const _AuthStage({required this.isSignup});
+  const _AuthStage({required this.isSignup, required this.apiBase});
 
   final bool isSignup;
+  final String apiBase;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: color.primaryContainer.withValues(
-            alpha: theme.brightness == Brightness.dark ? 0.26 : 0.72),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const BrandMark(size: 52),
-              const SizedBox(width: 14),
-              Text('ExamAI', style: theme.textTheme.displaySmall),
-            ],
-          ),
-          const SizedBox(height: 18),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            child: Text(
-              isSignup ? 'Build your study cockpit.' : 'Welcome back, scholar.',
-              key: ValueKey(isSignup),
-              style: theme.textTheme.headlineMedium,
+    return SurfacePanel(
+      padding: EdgeInsets.zero,
+      color: color.primaryContainer
+          .withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.52),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(26),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const BrandMark(size: 52),
+                const SizedBox(width: 14),
+                Text('ExamAI', style: theme.textTheme.displaySmall),
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Upload notes, turn them into smart summaries, practice MCQs, and keep your revision moving.',
-            style: theme.textTheme.bodyLarge
-                ?.copyWith(color: color.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          const Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FeaturePill(icon: Icons.bolt_rounded, label: 'Fast summaries'),
-              FeaturePill(icon: Icons.quiz_rounded, label: 'MCQ practice'),
-              FeaturePill(icon: Icons.style_rounded, label: 'Flashcards'),
-              FeaturePill(
-                  icon: Icons.emoji_events_rounded, label: 'Quiz scores'),
-            ],
-          ),
-        ],
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 520;
+                final illustration = StudyIllustration(
+                  icon: isSignup
+                      ? Icons.rocket_launch_rounded
+                      : Icons.psychology_alt_rounded,
+                  color: isSignup ? AppTheme.coral : AppTheme.teal,
+                  size: compact ? 130 : 160,
+                );
+                final copy = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      child: Text(
+                        isSignup
+                            ? 'Build your study cockpit.'
+                            : 'Welcome back, scholar.',
+                        key: ValueKey(isSignup),
+                        style: theme.textTheme.headlineMedium,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Upload notes, turn them into smart summaries, practice MCQs, and keep your revision moving.',
+                      style: theme.textTheme.bodyLarge
+                          ?.copyWith(color: color.onSurfaceVariant),
+                    ),
+                  ],
+                );
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      copy,
+                      const SizedBox(height: 20),
+                      Center(child: illustration)
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: copy),
+                    const SizedBox(width: 18),
+                    illustration,
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            const Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FeaturePill(icon: Icons.bolt_rounded, label: 'Fast summaries'),
+                FeaturePill(icon: Icons.quiz_rounded, label: 'MCQ practice'),
+                FeaturePill(icon: Icons.style_rounded, label: 'Flashcards'),
+                FeaturePill(
+                    icon: Icons.emoji_events_rounded, label: 'Quiz scores'),
+              ],
+            ),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth > 640 ? 3 : 1;
+                return ResponsiveGrid(
+                  columns: columns,
+                  spacing: 10,
+                  children: [
+                    const AuthMetric(
+                        icon: Icons.auto_awesome_rounded,
+                        label: 'AI modes',
+                        value: '6'),
+                    const AuthMetric(
+                        icon: Icons.repeat_rounded,
+                        label: 'Card recall',
+                        value: 'SRS'),
+                    AuthMetric(
+                        icon: Icons.cloud_done_rounded,
+                        label: 'API',
+                        value: apiBase
+                            .replaceFirst('https://', '')
+                            .replaceFirst('http://', '')),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -757,36 +989,123 @@ class _AuthForm extends StatelessWidget {
     required this.isSignup,
     required this.loading,
     required this.obscurePassword,
+    required this.connectionError,
+    required this.showApiSettings,
+    required this.checkingConnection,
+    required this.apiBaseController,
+    required this.currentApiBase,
     required this.nameController,
     required this.emailController,
     required this.passwordController,
     required this.onSubmit,
     required this.onToggleSignup,
     required this.onTogglePassword,
+    required this.onToggleApiSettings,
+    required this.onTestConnection,
   });
 
   final bool isSignup;
   final bool loading;
   final bool obscurePassword;
+  final String? connectionError;
+  final bool showApiSettings;
+  final bool checkingConnection;
+  final TextEditingController apiBaseController;
+  final String currentApiBase;
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
   final VoidCallback onSubmit;
   final VoidCallback onToggleSignup;
   final VoidCallback onTogglePassword;
+  final VoidCallback onToggleApiSettings;
+  final VoidCallback onTestConnection;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SurfacePanel(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(isSignup ? 'Create account' : 'Login',
-              style: theme.textTheme.headlineSmall),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(isSignup ? 'Create account' : 'Login',
+                        style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      isSignup
+                          ? 'Start with a cloud study account.'
+                          : 'Continue your revision from any device.',
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Backend settings',
+                onPressed: onToggleApiSettings,
+                icon: const Icon(Icons.tune_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: connectionError == null
+                ? ApiStatusPill(
+                    key: const ValueKey('api-ok'), apiBase: currentApiBase)
+                : BackendErrorPanel(
+                    key: const ValueKey('api-error'),
+                    message: connectionError!,
+                    onOpenSettings: onToggleApiSettings,
+                  ),
+          ),
+          const SizedBox(height: 14),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            child: showApiSettings
+                ? Column(
+                    children: [
+                      TextField(
+                        controller: apiBaseController,
+                        keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.cloud_queue_rounded),
+                          labelText: 'Backend API URL',
+                          hintText: 'https://examai-api.onrender.com',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.tonalIcon(
+                          onPressed:
+                              checkingConnection ? null : onTestConnection,
+                          icon: checkingConnection
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.wifi_tethering_rounded),
+                          label: Text(checkingConnection
+                              ? 'Checking...'
+                              : 'Test backend'),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             child: isSignup
@@ -852,6 +1171,134 @@ class _AuthForm extends StatelessWidget {
             child: Text(isSignup
                 ? 'I already have an account'
                 : 'Create a new account'),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Demo login: student@example.com / password123',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelLarge
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AuthMetric extends StatelessWidget {
+  const AuthMetric(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SurfacePanel(
+      padding: const EdgeInsets.all(12),
+      color: theme.colorScheme.surface.withValues(alpha: 0.64),
+      child: Row(
+        children: [
+          Icon(icon, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium),
+                Text(label,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ApiStatusPill extends StatelessWidget {
+  const ApiStatusPill({super.key, required this.apiBase});
+
+  final String apiBase;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SurfacePanel(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      color: theme.colorScheme.primaryContainer
+          .withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.46),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_done_rounded, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              apiBase,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelLarge,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BackendErrorPanel extends StatelessWidget {
+  const BackendErrorPanel(
+      {super.key, required this.message, required this.onOpenSettings});
+
+  final String message;
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SurfacePanel(
+      padding: const EdgeInsets.all(14),
+      color: AppTheme.coral
+          .withValues(alpha: theme.brightness == Brightness.dark ? 0.16 : 0.1),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: AppTheme.coral),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Backend not connected',
+                    style: theme.textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Use your Render URL when it is live, or start FastAPI locally before logging in.',
+                  style: theme.textTheme.labelLarge,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Open backend settings',
+            onPressed: onOpenSettings,
+            icon: const Icon(Icons.tune_rounded),
           ),
         ],
       ),
@@ -1666,46 +2113,10 @@ class _ProfilePanelState extends State<ProfilePanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SurfacePanel(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const BrandMark(size: 58),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.user['full_name']?.toString() ?? 'Student',
-                            style: theme.textTheme.headlineSmall),
-                        Text(widget.user['email']?.toString() ?? '',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  FeaturePill(
-                      icon: Icons.workspace_premium_rounded,
-                      label: plan == 'premium' ? 'Premium' : 'Free'),
-                  FeaturePill(
-                      icon: Icons.cloud_queue_rounded, label: widget.apiBase),
-                  const FeaturePill(
-                      icon: Icons.phone_iphone_rounded,
-                      label: 'Android, iOS, Windows'),
-                ],
-              ),
-            ],
-          ),
+        ProfileHeroSection(
+          user: widget.user,
+          plan: plan,
+          apiBase: widget.apiBase,
         ),
         const SizedBox(height: 14),
         SurfacePanel(
@@ -1726,64 +2137,73 @@ class _ProfilePanelState extends State<ProfilePanel> {
                   label: const Text('Save'),
                 ),
               ),
+              const SizedBox(height: 6),
+              Text(
+                'Shape the tutor around your level, exam type, daily rhythm, and preferred explanation style.',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  SizedBox(
-                      width: 210,
-                      child: TextField(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.maxWidth > 1180
+                      ? 4
+                      : constraints.maxWidth > 780
+                          ? 3
+                          : constraints.maxWidth > 520
+                              ? 2
+                              : 1;
+                  return ResponsiveGrid(
+                    columns: columns,
+                    spacing: 12,
+                    children: [
+                      ProfileTextField(
+                          icon: Icons.school_rounded,
                           controller: levelController,
-                          decoration: const InputDecoration(
-                              labelText: 'Academic level'))),
-                  SizedBox(
-                      width: 210,
-                      child: TextField(
+                          label: 'Academic level'),
+                      ProfileTextField(
+                          icon: Icons.menu_book_rounded,
                           controller: subjectController,
-                          decoration:
-                              const InputDecoration(labelText: 'Subject'))),
-                  SizedBox(
-                      width: 210,
-                      child: TextField(
+                          label: 'Subject'),
+                      ProfileTextField(
+                          icon: Icons.assignment_rounded,
                           controller: examTypeController,
-                          decoration:
-                              const InputDecoration(labelText: 'Exam type'))),
-                  SizedBox(
-                      width: 250,
-                      child: TextField(
+                          label: 'Exam type'),
+                      ProfileTextField(
+                          icon: Icons.flag_rounded,
                           controller: goalController,
-                          decoration:
-                              const InputDecoration(labelText: 'Study goal'))),
-                  SizedBox(
-                      width: 160,
-                      child: TextField(
+                          label: 'Study goal'),
+                      ProfileTextField(
+                          icon: Icons.notifications_active_rounded,
                           controller: reminderController,
-                          decoration:
-                              const InputDecoration(labelText: 'Reminder'))),
-                  DropdownMenu<String>(
-                    width: 220,
-                    label: const Text('AI tutor tone'),
-                    initialSelection: aiTone,
-                    onSelected: (value) {
-                      if (value != null) setState(() => aiTone = value);
-                    },
-                    dropdownMenuEntries: const [
-                      DropdownMenuEntry(
-                          value: 'Step-by-step', label: 'Step-by-step'),
-                      DropdownMenuEntry(
-                          value: 'Explain like I am 10',
-                          label: 'Explain like I am 10'),
-                      DropdownMenuEntry(
-                          value: 'University level', label: 'University level'),
-                      DropdownMenuEntry(
-                          value: 'Example-based', label: 'Example-based'),
-                      DropdownMenuEntry(
-                          value: 'Socratic questioning',
-                          label: 'Socratic questioning'),
+                          label: 'Reminder'),
+                      DropdownMenu<String>(
+                        width: double.infinity,
+                        leadingIcon: const Icon(Icons.psychology_alt_rounded),
+                        label: const Text('AI tutor tone'),
+                        initialSelection: aiTone,
+                        onSelected: (value) {
+                          if (value != null) setState(() => aiTone = value);
+                        },
+                        dropdownMenuEntries: const [
+                          DropdownMenuEntry(
+                              value: 'Step-by-step', label: 'Step-by-step'),
+                          DropdownMenuEntry(
+                              value: 'Explain like I am 10',
+                              label: 'Explain like I am 10'),
+                          DropdownMenuEntry(
+                              value: 'University level',
+                              label: 'University level'),
+                          DropdownMenuEntry(
+                              value: 'Example-based', label: 'Example-based'),
+                          DropdownMenuEntry(
+                              value: 'Socratic questioning',
+                              label: 'Socratic questioning'),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ],
           ),
@@ -1807,6 +2227,12 @@ class _ProfilePanelState extends State<ProfilePanel> {
                   label: const Text('Create class'),
                 ),
               ),
+              const SizedBox(height: 6),
+              Text(
+                'Create a class space for future school mode: shared notes, assignments, scores, and class progress.',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: classNameController,
@@ -1828,6 +2254,100 @@ class _ProfilePanelState extends State<ProfilePanel> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class ProfileHeroSection extends StatelessWidget {
+  const ProfileHeroSection(
+      {super.key,
+      required this.user,
+      required this.plan,
+      required this.apiBase});
+
+  final Map<String, dynamic> user;
+  final String plan;
+  final String apiBase;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SurfacePanel(
+      padding: const EdgeInsets.all(22),
+      color: theme.colorScheme.primaryContainer
+          .withValues(alpha: theme.brightness == Brightness.dark ? 0.18 : 0.42),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 760;
+          final profile = Row(
+            children: [
+              const BrandMark(size: 68),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user['full_name']?.toString() ?? 'Student',
+                        style: theme.textTheme.headlineSmall),
+                    const SizedBox(height: 4),
+                    Text(user['email']?.toString() ?? '',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant)),
+                  ],
+                ),
+              ),
+            ],
+          );
+          final status = Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+            children: [
+              FeaturePill(
+                  icon: Icons.workspace_premium_rounded,
+                  label: plan == 'premium' ? 'Premium' : 'Free'),
+              FeaturePill(
+                  icon: Icons.cloud_queue_rounded,
+                  label: apiBase
+                      .replaceFirst('https://', '')
+                      .replaceFirst('http://', '')),
+              const FeaturePill(
+                  icon: Icons.phone_iphone_rounded,
+                  label: 'Android, iOS, Windows'),
+            ],
+          );
+          if (compact) {
+            return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [profile, const SizedBox(height: 18), status]);
+          }
+          return Row(children: [
+            Expanded(child: profile),
+            const SizedBox(width: 20),
+            Flexible(child: status)
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+class ProfileTextField extends StatelessWidget {
+  const ProfileTextField(
+      {super.key,
+      required this.icon,
+      required this.controller,
+      required this.label});
+
+  final IconData icon;
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(prefixIcon: Icon(icon), labelText: label),
     );
   }
 }
