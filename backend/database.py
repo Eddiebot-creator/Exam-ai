@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from security import hash_password
+
 try:
     import psycopg
     from psycopg.rows import dict_row
@@ -271,6 +273,18 @@ POSTGRES_SCHEMA = SQLITE_SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "IN
 )
 
 
+def _seed_demo_user(db: Any) -> None:
+    existing = db.execute(
+        "SELECT id FROM users WHERE email = ?", ("student@example.com",)
+    ).fetchone()
+    if existing:
+        return
+    db.execute(
+        "INSERT INTO users (full_name, email, password_hash) VALUES (?, ?, ?)",
+        ("Demo Student", "student@example.com", hash_password("password123")),
+    )
+
+
 def init_db() -> None:
     with get_connection() as db:
         db.executescript(POSTGRES_SCHEMA if using_postgres() else SQLITE_SCHEMA)
@@ -289,6 +303,7 @@ def init_db() -> None:
         _ensure_column(db, "quiz_results", "time_seconds", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(db, "quiz_results", "weak_topics", "TEXT NOT NULL DEFAULT ''")
         _ensure_column(db, "quiz_results", "strong_topics", "TEXT NOT NULL DEFAULT ''")
+        _seed_demo_user(db)
 
 
 def _ensure_column(db: Any, table: str, column: str, definition: str) -> None:
