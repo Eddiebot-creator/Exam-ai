@@ -220,3 +220,12 @@ def extract_terms(text: str) -> list[str]:
         seen.add(lowered)
         terms.append(word.capitalize())
     return terms
+
+
+def simple_summary(text: str, max_chars: int = 900) -> str:
+    cleaned = " ".join((text or "").split())
+    if not cleaned:
+        return "No content available yet."
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[:max_chars].rsplit(" ", 1)[0] + "..."

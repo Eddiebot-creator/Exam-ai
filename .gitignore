@@ -8,3 +8,9 @@ __pycache__/
 build/
 frontend/.metadata
 frontend/android/local.properties
+build/
+.dart_tool/
+.venv/
+__pycache__/
+*.zip
+*.apk

@@ -3,6 +3,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from database import get_connection
 from schemas import TextNoteRequest
 from services.file_text import extract_upload_text
+from services.learning_engine import process_note
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -37,7 +38,8 @@ def create_text_note(payload: TextNoteRequest):
         )
         db.execute("UPDATE users SET uploads_used = uploads_used + 1 WHERE id = ?", (payload.user_id,))
         note_id = cursor.lastrowid
-    return {"id": note_id, "title": payload.title, "extracted_text": text}
+    engine = process_note(note_id, payload.user_id)
+    return {"id": note_id, "title": payload.title, "extracted_text": text, "engine": engine}
 
 
 @router.post("/upload")
@@ -53,7 +55,8 @@ async def upload_note(user_id: int = Form(...), title: str = Form(...), file: Up
         )
         db.execute("UPDATE users SET uploads_used = uploads_used + 1 WHERE id = ?", (user_id,))
         note_id = cursor.lastrowid
-    return {"id": note_id, "title": title, "file_name": file.filename, "extracted_text": text[:2000]}
+    engine = process_note(note_id, user_id)
+    return {"id": note_id, "title": title, "file_name": file.filename, "extracted_text": text[:2000], "engine": engine}
 
 
 @router.get("")

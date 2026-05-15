@@ -111,6 +111,9 @@ CREATE TABLE IF NOT EXISTS users (
     study_seconds INTEGER NOT NULL DEFAULT 0,
     streak_days INTEGER NOT NULL DEFAULT 0,
     last_study_date TEXT,
+    avatar_character TEXT NOT NULL DEFAULT 'robot',
+    profile_image_path TEXT,
+    bio TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -292,6 +295,9 @@ def init_db() -> None:
         _ensure_column(db, "users", "study_seconds", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(db, "users", "streak_days", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(db, "users", "last_study_date", "DATE" if using_postgres() else "TEXT")
+        _ensure_column(db, "users", "avatar_character", "TEXT NOT NULL DEFAULT 'robot'")
+        _ensure_column(db, "users", "profile_image_path", "TEXT")
+        _ensure_column(db, "users", "bio", "TEXT NOT NULL DEFAULT ''")
         _ensure_column(db, "summaries", "mode", "TEXT NOT NULL DEFAULT 'short'")
         _ensure_column(db, "questions", "difficulty", "TEXT NOT NULL DEFAULT 'medium'")
         _ensure_column(db, "flashcards", "rating", "TEXT NOT NULL DEFAULT 'new'")
