@@ -6,7 +6,7 @@ from services.learning_engine import coach_message
 router=APIRouter(prefix='/ai',tags=['AI Tutor'])
 @router.post('/chat')
 def chat(p:dict,db:Session=Depends(get_db)):
-    user_id=int(p.get('user_id',1)); note_id=p.get('note_id'); msg=p.get('message',''); note=db.query(Note).filter_by(id=note_id,user_id=user_id).first() if note_id else db.query(Note).filter_by(user_id=user_id).first(); mem=db.query(StudyMemory).filter_by(user_id=user_id).first(); weak=mem.weak_topics if mem and mem.weak_topics else ['your current topic']; context=note.extracted_text[:350] if note else 'No uploaded note context yet.'; answer=f"{coach_message(weak)}
+    user_id=int(p.get('user_id',1)); note_id=p.get('note_id'); msg=p.get('message',''); note=db.query(Note).filter_by(id=note_id,user_id=user_id).first() if note_id else db.query(Note).filter_by(user_id=user_id).first(); mem=db.query(StudyMemory).filter_by(user_id=user_id).first(); weak=mem.weak_topics if mem and mem.weak_topics else ['your current topic']; context=note.extracted_text[:350] if note else 'No uploaded note context yet.'; answer = f"{coach_message(weak)}\n\nBased on your uploaded notes:\n{context}\n\nAI Response:\n{msg}"
 
 Your question: {msg}
 
