@@ -23,4 +23,4 @@ def change_password(user_id:int,p:dict,db:Session=Depends(get_db)):
 async def picture(user_id:int,file:UploadFile=File(...),db:Session=Depends(get_db)):
     u=db.query(User).filter_by(id=user_id).first();
     if not u: raise HTTPException(404,'User not found.')
-    os.makedirs('uploads/profile',exist_ok=True); path=f'uploads/profile/{user_id}_{file.filename}'; open(path,'wb').write(await file.read()); u.profile_image_url='/'+path.replace('\','/'); db.commit(); db.refresh(u); return user_payload(u)
+    os.makedirs('uploads/profile',exist_ok=True); path=f'uploads/profile/{user_id}_{file.filename}'; open(path,'wb').write(await file.read()); u.profile_image_url='/'+path.replace('\\', '/'); db.commit(); db.refresh(u); return user_payload(u)
