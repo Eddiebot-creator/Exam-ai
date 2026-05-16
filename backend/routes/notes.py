@@ -1,78 +1,20 @@
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from database import get_connection
-from schemas import TextNoteRequest
-from services.file_text import extract_upload_text
-from services.learning_engine import process_note
-
-router = APIRouter(prefix="/notes", tags=["notes"])
-
-FREE_UPLOAD_LIMIT = 3
-
-
-def _assert_can_upload(user_id: int) -> None:
-    with get_connection() as db:
-        user = db.execute(
-            "SELECT subscription_status, uploads_used FROM users WHERE id = ?",
-            (user_id,),
-        ).fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    if user["subscription_status"] != "premium" and user["uploads_used"] >= FREE_UPLOAD_LIMIT:
-        raise HTTPException(
-            status_code=402,
-            detail="Free plan limit reached. Upgrade to premium for unlimited uploads.",
-        )
-
-
-@router.post("/text")
-def create_text_note(payload: TextNoteRequest):
-    text = payload.text.strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="Note text is required")
-    _assert_can_upload(payload.user_id)
-    with get_connection() as db:
-        cursor = db.execute(
-            "INSERT INTO notes (user_id, title, extracted_text) VALUES (?, ?, ?)",
-            (payload.user_id, payload.title.strip(), text),
-        )
-        db.execute("UPDATE users SET uploads_used = uploads_used + 1 WHERE id = ?", (payload.user_id,))
-        note_id = cursor.lastrowid
-    engine = process_note(note_id, payload.user_id)
-    return {"id": note_id, "title": payload.title, "extracted_text": text, "engine": engine}
-
-
-@router.post("/upload")
-async def upload_note(user_id: int = Form(...), title: str = Form(...), file: UploadFile = File(...)):
-    _assert_can_upload(user_id)
-    text = await extract_upload_text(file)
-    if not text:
-        raise HTTPException(status_code=400, detail="Could not extract readable text from this file")
-    with get_connection() as db:
-        cursor = db.execute(
-            "INSERT INTO notes (user_id, title, file_name, extracted_text) VALUES (?, ?, ?, ?)",
-            (user_id, title.strip(), file.filename, text),
-        )
-        db.execute("UPDATE users SET uploads_used = uploads_used + 1 WHERE id = ?", (user_id,))
-        note_id = cursor.lastrowid
-    engine = process_note(note_id, user_id)
-    return {"id": note_id, "title": title, "file_name": file.filename, "extracted_text": text[:2000], "engine": engine}
-
-
-@router.get("")
-def list_notes(user_id: int = 1):
-    with get_connection() as db:
-        rows = db.execute(
-            "SELECT id, title, file_name, created_at FROM notes WHERE user_id = ? ORDER BY id DESC",
-            (user_id,),
-        ).fetchall()
-    return [dict(row) for row in rows]
-
-
-@router.get("/{note_id}")
-def get_note(note_id: int):
-    with get_connection() as db:
-        note = db.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    return dict(note)
+from fastapi import APIRouter,Depends,UploadFile,File,Form
+from sqlalchemy.orm import Session
+from database import get_db,Note,Flashcard,Mcq
+from services.learning_engine import extract_text,detect_topics,make_summary,make_flashcards,make_mcqs
+import os
+router=APIRouter(prefix='/notes',tags=['Notes / Smart Note Engine'])
+@router.get('')
+def list_notes(user_id:int,db:Session=Depends(get_db)): return [payload(n) for n in db.query(Note).filter_by(user_id=user_id).order_by(Note.id.desc()).all()]
+@router.post('/text')
+def text_note(p:dict,db:Session=Depends(get_db)):
+    user_id=int(p.get('user_id',1)); text=p.get('text',''); topics=detect_topics(text); n=Note(user_id=user_id,title=p.get('title','Text note'),extracted_text=text,topics=topics,summary=make_summary(text)); db.add(n); db.commit(); db.refresh(n); gen(db,user_id,n); return payload(n)
+@router.post('/upload')
+async def upload(user_id:int=Form(...),title:str=Form('Uploaded note'),file:UploadFile=File(...),db:Session=Depends(get_db)):
+    os.makedirs('uploads/notes',exist_ok=True); raw=await file.read(); path=f'uploads/notes/{user_id}_{file.filename}'; open(path,'wb').write(raw); text=extract_text(file.filename,raw); topics=detect_topics(text); n=Note(user_id=user_id,title=title,file_name=file.filename,file_path=path,extracted_text=text,topics=topics,summary=make_summary(text)); db.add(n); db.commit(); db.refresh(n); gen(db,user_id,n); return payload(n)
+def gen(db,user_id,n):
+    for x in make_flashcards(user_id,n.id,n.extracted_text,n.topics or []): db.add(Flashcard(**x))
+    for x in make_mcqs(user_id,n.id,n.extracted_text,n.topics or []): db.add(Mcq(**x))
+    db.commit()
+def payload(n): return {'id':n.id,'user_id':n.user_id,'title':n.title,'file_name':n.file_name,'topics':n.topics or [],'summary':n.summary,'created_at':n.created_at.isoformat()}

@@ -1,45 +1,12 @@
-import os
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-
-load_dotenv()
-os.makedirs("uploads/profile_pictures", exist_ok=True)
 from database import init_db
-from routes import ai, auth, flashcards, notes, product, progress, quiz, subscriptions, engine
-
-app = FastAPI(title="AI Exam Assistant API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-
-
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-
-@app.get("/")
-def health():
-    return {"status": "ok", "app": "AI Exam Assistant"}
-
-
-app.include_router(auth.router)
-app.include_router(notes.router)
-app.include_router(ai.router)
-app.include_router(quiz.router)
-app.include_router(flashcards.router)
-app.include_router(progress.router)
-app.include_router(subscriptions.router)
-app.include_router(product.router)
-app.include_router(engine.router)
+from routes import auth,profile,notes,flashcards,quiz,progress,ai,memory,wellness,exams,voice,camera,study_rooms,school
+app=FastAPI(title='ExamAI Complete Backend Engine',version='1.0.0')
+app.add_middleware(CORSMiddleware,allow_origins=['*'],allow_credentials=True,allow_methods=['*'],allow_headers=['*'])
+@app.on_event('startup')
+def startup(): init_db()
+@app.get('/')
+def root(): return {'status':'ok','app':'ExamAI Complete Backend Engine','modules':['authentication','note upload','summaries','flashcards','MCQs','quiz engine','progress tracking','AI tutor','profile system','biometric hooks','XP/streaks','weak-topic tracking','burnout detection','school mode','voice tutor','study rooms','camera/OCR','AI memory graph','wellness','exam prediction']}
+for r in [auth.router,profile.router,notes.router,flashcards.router,quiz.router,progress.router,ai.router,memory.router,wellness.router,exams.router,voice.router,camera.router,study_rooms.router,school.router]: app.include_router(r)
