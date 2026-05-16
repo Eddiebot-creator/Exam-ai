@@ -74,6 +74,37 @@ class ApiClient {
     return _map(http.Response(await streamed.stream.bytesToString(), streamed.statusCode));
   }
 
+
+Future<Map<String, dynamic>> getJson(String path) async {
+  final response = await http
+      .get(Uri.parse('$baseUrl$path'))
+      .timeout(const Duration(seconds: 35));
+  return _map(response);
+}
+
+Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body) async {
+  final response = await http
+      .post(
+        Uri.parse('$baseUrl$path'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      )
+      .timeout(const Duration(seconds: 45));
+  return _map(response);
+}
+
+Future<Map<String, dynamic>> adaptiveHome(int userId) async {
+  return getJson('/autonomous/adaptive-home/$userId');
+}
+
+Future<Map<String, dynamic>> learningEvent(Map<String, dynamic> payload) async {
+  return postJson('/autonomous/learning-event', payload);
+}
+
+Future<Map<String, dynamic>> nextBestAction(int userId) async {
+  return getJson('/autonomous/next-best-action/$userId');
+}
+
   Map<String, dynamic> _map(http.Response response) {
     final body = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode >= 400) throw Exception(body['detail']?.toString() ?? 'Request failed (${response.statusCode}).');

@@ -29,12 +29,14 @@ class TutorScreen extends StatefulWidget {
 
 class _TutorScreenState extends State<TutorScreen> {
   final input = TextEditingController();
+
   final messages = <TutorMessage>[
     TutorMessage(
       false,
-      'Hi, I am your study buddy. Ask me one question, and I will explain it calmly step by step.',
+      'Hi, I am your study buddy. Ask me one question, and I will use your backend AI tutor to answer.',
     ),
   ];
+
   bool sending = false;
 
   @override
@@ -45,14 +47,18 @@ class _TutorScreenState extends State<TutorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chatHeight = min<double>(660, MediaQuery.sizeOf(context).height - 190);
+    final chatHeight = min<double>(
+      660,
+      MediaQuery.sizeOf(context).height - 190,
+    );
 
     return Column(
       children: [
         const SectionIntro(
           icon: Icons.smart_toy_rounded,
           title: 'AI Tutor',
-          subtitle: 'ChatGPT-style tutor with note context, image upload, suggested prompts and step-by-step answers.',
+          subtitle:
+              'Live AI tutor with note context, suggested prompts, and step-by-step answers.',
           mascot: StudentMascot(size: 100, mood: MascotMood.wave),
         ),
         const SizedBox(height: 16),
@@ -80,7 +86,10 @@ class _TutorScreenState extends State<TutorScreen> {
                       CalmPill(
                         icon: Icons.mic_rounded,
                         label: 'Voice ready',
-                        onTap: () => toast(context, 'Voice tutor button is active.'),
+                        onTap: () => toast(
+                          context,
+                          'Voice tutor button is active.',
+                        ),
                       ),
                     ],
                   ),
@@ -92,20 +101,22 @@ class _TutorScreenState extends State<TutorScreen> {
                   child: Row(
                     children: [
                       for (final prompt in [
-                        'Explain like I am 12',
-                        'Make 5 MCQs',
-                        'Summarize my note',
-                        'Give exam tips',
+                        'Explain this like I am 12 using simple examples.',
+                        'Generate 5 MCQs from my uploaded note.',
+                        'Summarize my latest uploaded note.',
+                        'Give me exam tips based on my weak topics.',
                       ])
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: CalmPill(
                             icon: Icons.auto_awesome_rounded,
-                            label: prompt,
-                            onTap: () {
-                              input.text = prompt;
-                              _send();
-                            },
+                            label: _shortPrompt(prompt),
+                            onTap: sending
+                                ? null
+                                : () {
+                                    input.text = prompt;
+                                    _send();
+                                  },
                           ),
                         ),
                     ],
@@ -127,7 +138,7 @@ class _TutorScreenState extends State<TutorScreen> {
                   child: Row(
                     children: [
                       IconButton.filledTonal(
-                        onPressed: _pickImage,
+                        onPressed: sending ? null : _pickImage,
                         icon: const Icon(Icons.attach_file_rounded),
                       ),
                       const SizedBox(width: 8),
@@ -136,6 +147,9 @@ class _TutorScreenState extends State<TutorScreen> {
                           controller: input,
                           minLines: 1,
                           maxLines: 4,
+                          onSubmitted: (_) {
+                            if (!sending) _send();
+                          },
                           decoration: const InputDecoration(
                             hintText: 'Ask one question...',
                           ),
@@ -148,7 +162,9 @@ class _TutorScreenState extends State<TutorScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.arrow_upward_rounded),
                       ),
@@ -163,14 +179,22 @@ class _TutorScreenState extends State<TutorScreen> {
     );
   }
 
+  String _shortPrompt(String prompt) {
+    if (prompt.startsWith('Explain')) return 'Explain like I am 12';
+    if (prompt.startsWith('Generate')) return 'Make 5 MCQs';
+    if (prompt.startsWith('Summarize')) return 'Summarize my note';
+    return 'Give exam tips';
+  }
+
   Future<void> _pickImage() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
+
     if (result != null) {
       setState(
         () => messages.add(
           TutorMessage(
             true,
-            'Uploaded image: ${result.files.single.name}. Please explain this calmly.',
+            'Uploaded image: ${result.files.single.name}. Please explain this image when OCR/image AI is connected.',
           ),
         ),
       );
@@ -179,7 +203,7 @@ class _TutorScreenState extends State<TutorScreen> {
 
   Future<void> _send() async {
     final text = input.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || sending) return;
 
     setState(() {
       messages.add(TutorMessage(true, text));
@@ -191,29 +215,36 @@ class _TutorScreenState extends State<TutorScreen> {
       final noteId = widget.notes.isNotEmpty
           ? (widget.notes.first as Map)['id'] as int?
           : null;
-      final response = await widget.api.aiChat(widget.userId, noteId, text);
+
+      final response = await widget.api.aiChat(
+        widget.userId,
+        noteId,
+        text,
+      );
+
       final answer = response['answer']?.toString() ??
           response['response']?.toString() ??
           response['message']?.toString() ??
-          fallbackTutor(text);
-      setState(() => messages.add(TutorMessage(false, answer)));
-    } catch (_) {
-      setState(() => messages.add(TutorMessage(false, fallbackTutor(text))));
+          'AI could not generate a response.';
+
+      setState(() {
+        messages.add(TutorMessage(false, answer));
+      });
+    } catch (e) {
+      setState(() {
+        messages.add(
+          TutorMessage(
+            false,
+            'Backend connection error: $e',
+          ),
+        );
+      });
     } finally {
-      if (mounted) setState(() => sending = false);
+      if (mounted) {
+        setState(() => sending = false);
+      }
     }
   }
-}
-
-String fallbackTutor(String text) {
-  return '''Let us solve it calmly:
-
-1. Identify the main idea in "$text".
-2. Break it into smaller parts.
-3. Try one example.
-4. Test yourself with a short quiz.
-
-I will give stronger live answers when the backend AI route is connected.''';
 }
 
 class TutorBubble extends StatelessWidget {

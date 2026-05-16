@@ -1,0 +1,59 @@
+
+To make the Tutor buttons intelligent:
+
+1. Copy smart_action_service.dart into:
+   frontend/lib/services/smart_action_service.dart
+
+2. Open:
+   frontend/lib/services/api_client.dart
+
+3. Paste the code from api_client_add_methods.dart INSIDE class ApiClient, before _map().
+
+4. Open your TutorScreen file:
+   frontend/lib/screens/tutor/tutor_screen.dart
+   or wherever the TutorScreen code is.
+
+5. Add this import:
+   import '../../services/smart_action_service.dart';
+
+6. Inside _TutorScreenState, add:
+   late final SmartActionService smart = SmartActionService(
+     api: widget.api,
+     userId: widget.userId,
+   );
+
+7. Replace the prompt pills with backend actions:
+   Explain like I am 12 -> smart.explainLike12(noteId: latestNoteId)
+   Make 5 MCQs -> smart.adaptiveMcqs(noteId: latestNoteId)
+   Summarize note -> smart.summarizeNote(noteId: latestNoteId)
+   Exam tips -> smart.examTips(noteId: latestNoteId)
+   Spaced review -> smart.spacedReview()
+   Timetable -> smart.timetable()
+   Curriculum -> smart.curriculum()
+
+8. Make each button call _runSmartAction(...).
+
+9. Add this method in _TutorScreenState:
+
+Future<void> _runSmartAction(
+  Future<SmartActionResult> Function() action,
+) async {
+  setState(() => sending = true);
+  try {
+    final result = await action();
+    setState(() {
+      messages.add(TutorMessage(false, '${result.title}\n\n${result.message}'));
+    });
+  } catch (e) {
+    setState(() {
+      messages.add(TutorMessage(false, 'Smart action failed: $e'));
+    });
+  } finally {
+    if (mounted) setState(() => sending = false);
+  }
+}
+
+10. Run:
+   flutter clean
+   flutter pub get
+   flutter run -d windows
