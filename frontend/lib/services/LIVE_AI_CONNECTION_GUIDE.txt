@@ -1,0 +1,97 @@
+
+LIVE AI CONNECTION FIX FOR EXAMAI
+
+WHY THE APP SHOWS:
+"Let us solve it calmly..."
+
+The frontend is still using a fallback/demo response instead of the live backend AI route.
+
+--------------------------------------------------
+STEP 1 — FIND YOUR RENDER BACKEND URL
+--------------------------------------------------
+
+Example:
+https://exam-ai-113m.onrender.com
+
+--------------------------------------------------
+STEP 2 — FIND FRONTEND API CONFIG
+--------------------------------------------------
+
+Search inside frontend/lib for:
+
+localhost
+127.0.0.1
+10.0.2.2
+
+You may find:
+
+const String baseUrl = "http://10.0.2.2:8000";
+
+Replace with:
+
+const String baseUrl = "https://YOUR-RENDER-URL.onrender.com";
+
+--------------------------------------------------
+STEP 3 — FIND DEMO AI RESPONSE
+--------------------------------------------------
+
+Search for:
+
+"Let us solve it calmly"
+
+and remove the fake response block.
+
+--------------------------------------------------
+STEP 4 — CONNECT REAL AI ENDPOINT
+--------------------------------------------------
+
+Replace fake tutor logic with:
+
+final response = await http.post(
+  Uri.parse('$baseUrl/ai/chat'),
+  headers: {'Content-Type': 'application/json'},
+  body: jsonEncode({
+    'user_id': 1,
+    'message': message,
+  }),
+);
+
+final data = jsonDecode(response.body);
+
+setState(() {
+  aiReply = data['answer'];
+});
+
+--------------------------------------------------
+STEP 5 — TEST BACKEND
+--------------------------------------------------
+
+Open:
+
+https://YOUR-RENDER-URL.onrender.com/docs
+
+Test:
+POST /ai/chat
+
+--------------------------------------------------
+STEP 6 — REBUILD APP
+--------------------------------------------------
+
+flutter clean
+flutter pub get
+flutter run
+
+OR
+
+flutter build windows --release
+
+--------------------------------------------------
+WHAT THIS FIXES
+--------------------------------------------------
+
+- removes placeholder tutor mode
+- enables real AI responses
+- connects Flutter -> Render backend
+- enables live adaptive tutor answers
+- enables intelligence layer responses
+- enables real AI explanations

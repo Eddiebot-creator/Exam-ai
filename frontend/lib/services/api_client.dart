@@ -46,7 +46,7 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> aiChat(int userId, int? noteId, String message) async {
-    final path = noteId == null ? '/pro/ai-tutor' : '/ai/chat-with-note/$noteId';
+    final path = '/ai/chat';
     final response = await http.post(Uri.parse('$baseUrl$path'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'user_id': userId, 'note_id': noteId, 'message': message})).timeout(const Duration(seconds: 60));
     return _map(response);
   }
