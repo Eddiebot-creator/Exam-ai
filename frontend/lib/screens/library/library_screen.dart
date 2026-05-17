@@ -70,7 +70,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       children: [
                         PrimaryCalmButton(label: busy ? 'Saving...' : 'Save text', icon: Icons.save_rounded, onTap: busy ? null : _saveText),
                         const SizedBox(height: 10),
-                        SecondaryCalmButton(label: 'Upload file', icon: Icons.upload_file_rounded, onTap: busy ? null : _upload),
+                        SecondaryCalmButton(label: 'Upload file', icon: Icons.upload_file_rounded, onTap: () {
+  if (!busy) {
+    _upload();
+  }
+}),
                       ],
                     )
                   : Wrap(
@@ -78,7 +82,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       runSpacing: 10,
                       children: [
                         PrimaryCalmButton(label: busy ? 'Saving...' : 'Save text', icon: Icons.save_rounded, onTap: busy ? null : _saveText, compact: true),
-                        SecondaryCalmButton(label: 'Upload file', icon: Icons.upload_file_rounded, onTap: busy ? null : _upload),
+                        SecondaryCalmButton(label: 'Upload file', icon: Icons.upload_file_rounded, onTap: () {
+  if (!busy) {
+    _upload();
+  }
+}),
                       ],
                     ),
             ],
