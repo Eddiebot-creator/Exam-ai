@@ -236,19 +236,48 @@ Future<Map<String, dynamic>> deleteMyLearningData(int userId) async {
     try {
       body = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
-      final text = response.body.trim().isEmpty ? 'No response body.' : response.body.trim();
-      throw Exception('Server returned a non-JSON response (${response.statusCode}): $text');
+      throw Exception(_friendlyHttpError(response.statusCode, response.body));
     }
-    if (response.statusCode >= 400) throw Exception(body['detail']?.toString() ?? body['error']?.toString() ?? 'Request failed (${response.statusCode}).');
+    if (response.statusCode >= 400) throw Exception(_friendlyBodyError(response.statusCode, body));
     return body;
   }
 
   List<dynamic> _list(http.Response response) {
-    if (response.statusCode >= 400) throw Exception('Request failed (${response.statusCode}): ${response.body}');
+    if (response.statusCode >= 400) throw Exception(_friendlyHttpError(response.statusCode, response.body));
     try {
       return response.body.isEmpty ? [] : jsonDecode(response.body) as List<dynamic>;
     } catch (_) {
-      throw Exception('Server returned invalid list response (${response.statusCode}): ${response.body}');
+      throw Exception(_friendlyHttpError(response.statusCode, response.body));
     }
+  }
+
+  String _friendlyBodyError(int statusCode, Map<String, dynamic> body) {
+    final raw = body['detail'] ?? body['error'] ?? body['message'];
+    final message = raw?.toString() ?? '';
+    if (message.toLowerCase().contains('database') || message.toLowerCase().contains('schema')) {
+      return 'The server is updating its database. Please try again in a minute.';
+    }
+    if (message.toLowerCase().contains('gemini') || message.toLowerCase().contains('api key')) {
+      return 'The AI tutor is not fully connected yet. Check the AI key and try again.';
+    }
+    if (message.length > 180 || message.contains('Traceback') || message.contains('INSERT INTO') || message.contains('\\u000')) {
+      return _fallbackMessage(statusCode);
+    }
+    return message.isEmpty ? _fallbackMessage(statusCode) : message;
+  }
+
+  String _friendlyHttpError(int statusCode, String body) {
+    final text = body.trim();
+    if (text.length > 180 || text.contains('Traceback') || text.contains('INSERT INTO') || text.contains('\\u000')) {
+      return _fallbackMessage(statusCode);
+    }
+    return text.isEmpty ? _fallbackMessage(statusCode) : 'Server error ($statusCode): $text';
+  }
+
+  String _fallbackMessage(int statusCode) {
+    if (statusCode == 413) return 'That file is too large. Try a smaller note or split it into parts.';
+    if (statusCode == 401 || statusCode == 403) return 'Your session needs attention. Sign in again and retry.';
+    if (statusCode >= 500) return 'The server had trouble completing that action. Please try again shortly.';
+    return 'That action could not be completed. Please check the input and try again.';
   }
 }

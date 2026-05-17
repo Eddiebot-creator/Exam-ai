@@ -47,16 +47,18 @@ class InstitutionCourse(Base):
 class OfflineAction(Base):
     __tablename__='offline_actions'; id=Column(Integer,primary_key=True); user_id=Column(Integer,index=True); action_type=Column(String(140)); payload=Column(JSON,default=dict); status=Column(String(40),default='queued'); result=Column(JSON,default=dict); created_at=Column(DateTime,default=datetime.utcnow); synced_at=Column(DateTime,nullable=True)
 
-SQLITE_COLUMN_MIGRATIONS={
+SCHEMA_COLUMN_MIGRATIONS={
     'users': {
-        'password_hash':'password_hash VARCHAR(255) DEFAULT ""',
-        'avatar_character':'avatar_character VARCHAR(80) DEFAULT "robot"',
-        'profile_image_url':'profile_image_url VARCHAR(600) DEFAULT ""',
-        'bio':'bio TEXT DEFAULT ""',
-        'biometric_enabled':'biometric_enabled BOOLEAN DEFAULT 0',
-        'preferred_style':'preferred_style VARCHAR(80) DEFAULT "simple"',
-        'exam_course':'exam_course VARCHAR(160) DEFAULT ""',
-        'exam_date':'exam_date VARCHAR(50) DEFAULT ""',
+        'full_name':'full_name VARCHAR(140) DEFAULT \'Student\'',
+        'email':'email VARCHAR(180)',
+        'password_hash':'password_hash VARCHAR(255) DEFAULT \'\'',
+        'avatar_character':'avatar_character VARCHAR(80) DEFAULT \'robot\'',
+        'profile_image_url':'profile_image_url VARCHAR(600) DEFAULT \'\'',
+        'bio':'bio TEXT DEFAULT \'\'',
+        'biometric_enabled':'biometric_enabled BOOLEAN DEFAULT false',
+        'preferred_style':'preferred_style VARCHAR(80) DEFAULT \'simple\'',
+        'exam_course':'exam_course VARCHAR(160) DEFAULT \'\'',
+        'exam_date':'exam_date VARCHAR(50) DEFAULT \'\'',
         'target_score':'target_score INTEGER DEFAULT 80',
         'xp':'xp INTEGER DEFAULT 0',
         'level':'level INTEGER DEFAULT 1',
@@ -64,44 +66,94 @@ SQLITE_COLUMN_MIGRATIONS={
         'created_at':'created_at DATETIME',
     },
     'notes': {
-        'file_name':'file_name VARCHAR(255) DEFAULT ""',
-        'file_path':'file_path VARCHAR(600) DEFAULT ""',
-        'extracted_text':'extracted_text TEXT DEFAULT ""',
+        'user_id':'user_id INTEGER',
+        'title':'title VARCHAR(220)',
+        'file_name':'file_name VARCHAR(255) DEFAULT \'\'',
+        'file_path':'file_path VARCHAR(600) DEFAULT \'\'',
+        'extracted_text':'extracted_text TEXT DEFAULT \'\'',
         'topics':'topics JSON',
-        'summary':'summary TEXT DEFAULT ""',
+        'summary':'summary TEXT DEFAULT \'\'',
         'created_at':'created_at DATETIME',
     },
     'flashcards': {
-        'topic':'topic VARCHAR(160) DEFAULT "General"',
-        'mastered':'mastered BOOLEAN DEFAULT 0',
+        'user_id':'user_id INTEGER',
+        'note_id':'note_id INTEGER',
+        'topic':'topic VARCHAR(160) DEFAULT \'General\'',
+        'question':'question TEXT',
+        'answer':'answer TEXT',
+        'mastered':'mastered BOOLEAN DEFAULT false',
         'ease':'ease FLOAT DEFAULT 2.5',
         'interval_days':'interval_days INTEGER DEFAULT 1',
         'due_at':'due_at DATETIME',
     },
     'mcqs': {
-        'topic':'topic VARCHAR(160) DEFAULT "General"',
-        'explanation':'explanation TEXT DEFAULT ""',
+        'user_id':'user_id INTEGER',
+        'note_id':'note_id INTEGER',
+        'topic':'topic VARCHAR(160) DEFAULT \'General\'',
+        'question':'question TEXT',
+        'options':'options JSON',
+        'answer_index':'answer_index INTEGER DEFAULT 0',
+        'explanation':'explanation TEXT DEFAULT \'\'',
+    },
+    'chat_messages': {
+        'user_id':'user_id INTEGER',
+        'note_id':'note_id INTEGER',
+        'role':'role VARCHAR(30)',
+        'content':'content TEXT',
+        'created_at':'created_at DATETIME',
+    },
+    'quiz_attempts': {
+        'user_id':'user_id INTEGER',
+        'mode':'mode VARCHAR(80) DEFAULT \'practice\'',
+        'score':'score INTEGER DEFAULT 0',
+        'total':'total INTEGER DEFAULT 0',
+        'weak_topics':'weak_topics JSON',
+        'answers':'answers JSON',
+        'seconds_used':'seconds_used INTEGER DEFAULT 0',
+        'created_at':'created_at DATETIME',
+    },
+    'study_memory': {
+        'user_id':'user_id INTEGER',
+        'weak_topics':'weak_topics JSON',
+        'strong_topics':'strong_topics JSON',
+        'repeated_mistakes':'repeated_mistakes JSON',
+        'preferred_style':'preferred_style VARCHAR(80) DEFAULT \'simple\'',
+        'burnout_risk':'burnout_risk FLOAT DEFAULT 0',
+        'ai_notes':'ai_notes TEXT DEFAULT \'\'',
+        'updated_at':'updated_at DATETIME',
     },
 }
 
-def _apply_sqlite_migrations():
-    if not DATABASE_URL.startswith('sqlite'):
-        return
+def _column_sql(ddl):
+    if DATABASE_URL.startswith('sqlite'):
+        return ddl.replace(" DEFAULT false"," DEFAULT 0").replace(" DEFAULT true"," DEFAULT 1")
+    return ddl.replace('DATETIME','TIMESTAMP')
+
+def _table_columns(conn, table):
+    if DATABASE_URL.startswith('sqlite'):
+        return {row[1] for row in conn.exec_driver_sql(f'PRAGMA table_info({table})').fetchall()}
+    rows=conn.exec_driver_sql(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=%s",
+        (table,),
+    ).fetchall()
+    return {row[0] for row in rows}
+
+def _apply_schema_migrations():
     with engine.begin() as conn:
-        for table, columns in SQLITE_COLUMN_MIGRATIONS.items():
-            existing={row[1] for row in conn.exec_driver_sql(f'PRAGMA table_info({table})').fetchall()}
+        for table, columns in SCHEMA_COLUMN_MIGRATIONS.items():
+            existing=_table_columns(conn, table)
             if not existing:
                 continue
             for name, ddl in columns.items():
                 if name in existing:
                     continue
-                conn.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN {ddl}')
+                conn.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN {_column_sql(ddl)}')
 
 def init_db():
     os.makedirs('data',exist_ok=True)
     os.makedirs('uploads',exist_ok=True)
     Base.metadata.create_all(bind=engine)
-    _apply_sqlite_migrations()
+    _apply_schema_migrations()
 def get_db():
     db=SessionLocal()
     try: yield db

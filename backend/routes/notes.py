@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from database import get_db, Note, Flashcard, Mcq
-from services.learning_engine import extract_text, detect_topics, make_summary, make_flashcards, make_mcqs
+from services.learning_engine import clean_text, extract_text, detect_topics, make_summary, make_flashcards, make_mcqs
 import os
 
 router = APIRouter(prefix='/notes', tags=['Notes / Smart Note Engine'])
@@ -50,7 +50,7 @@ async def upload(
     raw = await file.read()
     filename = file.filename or "uploaded_file"
 
-    extracted_text = extract_text(filename, raw).replace("\x00", "").strip()
+    extracted_text = clean_text(extract_text(filename, raw))
     topics = detect_topics(extracted_text)
 
     note = Note(
@@ -63,10 +63,14 @@ async def upload(
         summary=make_summary(extracted_text),
     )
 
-    db.add(note)
-    db.commit()
-    db.refresh(note)
-    generated = gen(db, user_id, note)
+    try:
+        db.add(note)
+        db.commit()
+        db.refresh(note)
+        generated = gen(db, user_id, note)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(500, "Upload failed because the database schema is still updating. Redeploy once, then try again.") from exc
 
     data = payload(note)
     data.update({
@@ -121,16 +125,17 @@ def gen(db, user_id, n):
     except Exception as exc:
         # Do not fail note saving if generated learning materials fail.
         db.rollback()
-        return {'flashcards': 0, 'mcqs': 0, 'error': str(exc)}
+        print("Material generation failed:", exc)
+        return {'flashcards': 0, 'mcqs': 0, 'error': 'Study material generation is warming up. Try regenerate in a moment.'}
 
 def payload(n):
     return {
         'id': n.id,
         'user_id': n.user_id,
-        'title': n.title,
+        'title': clean_text(n.title),
         'file_name': getattr(n, 'file_name', '') or '',
         'topics': n.topics or [],
-        'summary': n.summary or '',
-        'extracted_text': (getattr(n, 'extracted_text', '') or '')[:500],
+        'summary': clean_text(n.summary or ''),
+        'extracted_text': clean_text(getattr(n, 'extracted_text', '') or '')[:500],
         'created_at': n.created_at.isoformat(),
     }

@@ -11,26 +11,43 @@ List<BoxShadow> softShadow(BuildContext context) {
 }
 
 void toast(BuildContext context, String message) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+  final clean = _friendlyText(message);
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(clean), behavior: SnackBarBehavior.floating));
 }
 
 Future<void> showFeatureSheet(BuildContext context, String title, String message) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (context) => Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text(message, style: TextStyle(color: muted(context), height: 1.45)),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Got it')),
-        ],
+    builder: (context) => SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .72),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_friendlyText(title, maxLength: 90), style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(_friendlyText(message, maxLength: 1400), style: TextStyle(color: muted(context), height: 1.45)),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Got it')),
+            ],
+          ),
+        ),
       ),
     ),
   );
+}
+
+String _friendlyText(String value, {int maxLength = 220}) {
+  var text = value.replaceFirst('Exception: ', '');
+  text = text.replaceAll(RegExp(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]'), ' ');
+  if (text.contains('Traceback') || text.contains('INSERT INTO') || text.contains(r'\u000')) {
+    text = 'The server had trouble completing that action. Please try again shortly.';
+  }
+  text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (text.length > maxLength) return '${text.substring(0, maxLength).trim()}...';
+  return text;
 }
