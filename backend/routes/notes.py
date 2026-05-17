@@ -40,27 +40,51 @@ def _create_text_note(p: dict, db: Session):
         db.rollback()
         raise HTTPException(500, f'Note database error: {str(exc)}')
 
-@router.post('/upload')
-async def upload(user_id: int = Form(...), title: str = Form('Uploaded note'), file: UploadFile = File(...), db: Session = Depends(get_db)):
-    try:
-        os.makedirs('uploads/notes', exist_ok=True)
-        raw = await file.read()
-        safe_name = file.filename.replace('/', '_').replace('\\', '_')
-        path = f'uploads/notes/{user_id}_{safe_name}'
-        with open(path, 'wb') as f:
-            f.write(raw)
-        text = extract_text(file.filename, raw)
-        topics = detect_topics(text)
-        n = Note(user_id=user_id, title=title or safe_name, file_name=file.filename, file_path=path, extracted_text=text, topics=topics, summary=make_summary(text))
-        db.add(n)
-        db.commit()
-        db.refresh(n)
-        gen(db, user_id, n)
-        return payload(n)
-    except SQLAlchemyError as exc:
-        db.rollback()
-        raise HTTPException(500, f'Upload database error: {str(exc)}')
+@router.post("/upload")
+async def upload(
+    user_id: int = Form(...),
+    title: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    raw = await file.read()
+    filename = file.filename or "uploaded_file"
 
+    try:
+        if filename.lower().endswith((".txt", ".md", ".csv")):
+            extracted_text = raw.decode("utf-8", errors="ignore")
+        else:
+            extracted_text = (
+                f"Uploaded file: {filename}. "
+                "Text extraction for this file type will be processed later."
+            )
+    except Exception:
+        extracted_text = f"Uploaded file: {filename}. Text extraction failed."
+
+    extracted_text = extracted_text.replace("\x00", "")
+
+    note = Note(
+        user_id=user_id,
+        title=title,
+        file_name=filename,
+        file_path="",
+        extracted_text=extracted_text,
+        topics=[],
+        summary=extracted_text[:500],
+    )
+
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+
+    return {
+        "id": note.id,
+        "title": note.title,
+        "file_name": note.file_name,
+        "summary": note.summary,
+        "message": "Note uploaded successfully",
+        }
+    
 def gen(db, user_id, n):
     try:
         for x in make_flashcards(user_id, n.id, n.extracted_text or '', n.topics or []):
