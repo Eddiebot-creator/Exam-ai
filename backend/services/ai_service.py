@@ -2,13 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import google.generativeai as genai
 import re
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-
+from typing import Any
 
 
 SUMMARY_PROMPTS = {
@@ -21,103 +16,159 @@ SUMMARY_PROMPTS = {
 }
 
 
+def _gemini_model():
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+        return genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-1.5-flash"))
+    except Exception as exc:
+        print("Gemini unavailable:", exc)
+        return None
+
+
+def _openai_client():
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        return None
+    try:
+        from openai import OpenAI
+
+        return OpenAI()
+    except Exception as exc:
+        print("OpenAI unavailable:", exc)
+        return None
+
+
+def _parse_json_array(value: str) -> list[dict[str, Any]]:
+    cleaned = value.strip().replace("```json", "").replace("```", "").strip()
+    start = cleaned.find("[")
+    end = cleaned.rfind("]")
+    if start >= 0 and end >= start:
+        cleaned = cleaned[start : end + 1]
+    data = json.loads(cleaned)
+    if not isinstance(data, list):
+        raise ValueError("AI response was not a JSON array.")
+    return [x for x in data if isinstance(x, dict)]
+
+
 def summarize_text(text: str, mode: str = "short") -> str:
     prompt = SUMMARY_PROMPTS.get(mode, SUMMARY_PROMPTS["short"])
-        if GEMINI_API_KEY:
+    source = (text or "").strip()
+
+    model = _gemini_model()
+    if model is not None and source:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(
-                f"{prompt}\n\n{text[:18000]}"
-            )
-            if response and response.text:
+            response = model.generate_content(f"{prompt}\n\n{source[:18000]}")
+            if response and getattr(response, "text", ""):
                 return response.text.strip()
-        except Exception as e:
-            print("Gemini summary failed:", e)
+        except Exception as exc:
+            print("Gemini summary failed:", exc)
 
-    if os.getenv("OPENAI_API_KEY"):
-        from openai import OpenAI
-        client = OpenAI()
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {
-                    "role": "system",
-                    "content": prompt,
-                },
-                {"role": "user", "content": text[:18000]},
-            ],
-        )
-        return response.output_text.strip()
+    client = _openai_client()
+    if client is not None and source:
+        try:
+            response = client.responses.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                input=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": source[:18000]},
+                ],
+            )
+            return response.output_text.strip()
+        except Exception as exc:
+            print("OpenAI summary failed:", exc)
 
-    sentences = re.split(r"(?<=[.!?])\s+", text)
+    sentences = re.split(r"(?<=[.!?])\s+", source)
     important = [sentence.strip() for sentence in sentences if len(sentence.split()) > 8]
     if not important:
-        return text[:1200] or "No readable study text was found."
-    terms = extract_terms(text)
+        return source[:1200] or "No readable study text was found."
+    terms = extract_terms(source)
     if mode == "definitions":
         return "\n".join(f"- {term}: Review this concept from your note." for term in terms[:12])
     if mode == "likely_questions":
         return "\n".join(f"- Explain {term} and why it matters." for term in terms[:10])
     if mode == "weak_topics":
-        return "\n".join(f"- {term}: Spend extra time on this because it appears central to the note." for term in terms[:8])
+        return "\n".join(f"- {term}: Spend extra time here because it appears central to the note." for term in terms[:8])
     if mode == "exam":
         return "\n".join(f"- Exam focus: {sentence}" for sentence in important[:8])
     limit = 14 if mode == "detailed" else 8
     return "\n".join(f"- {sentence}" for sentence in important[:limit])
 
 
-def generate_mcqs(text: str, count: int = 8, difficulty: str = "medium", mode: str = "practice") -> list[dict[str, object]]:
-        if GEMINI_API_KEY:
+def generate_mcqs(text: str, count: int = 8, difficulty: str = "medium", mode: str = "practice") -> list[dict[str, Any]]:
+    source = (text or "").strip()
+    request = (
+        "Return only valid JSON: an array of MCQ objects with keys "
+        "question, options, correct_answer, explanation. options must contain exactly four strings. "
+        "correct_answer must be A, B, C, or D.\n\n"
+        f"Generate {count} {difficulty} {mode} MCQs from this study text:\n{source[:18000]}"
+    )
+
+    model = _gemini_model()
+    if model is not None and source:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(
-                f"""
-Return only valid JSON: an array of MCQ objects with keys:
-question, options, correct_answer, explanation.
-correct_answer must be A, B, C, or D.
+            response = model.generate_content(request)
+            if response and getattr(response, "text", ""):
+                questions = _parse_json_array(response.text)
+                if questions:
+                    return _clean_mcqs(questions, difficulty)[:count]
+        except Exception as exc:
+            print("Gemini MCQ failed:", exc)
 
-Generate {count} {difficulty} {mode} MCQs from this text:
-{text[:18000]}
-"""
+    client = _openai_client()
+    if client is not None and source:
+        try:
+            response = client.responses.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                input=[
+                    {"role": "system", "content": "You generate exam-ready MCQs and return only JSON."},
+                    {"role": "user", "content": request},
+                ],
             )
-            if response and response.text:
-                cleaned = response.text.strip()
-                cleaned = cleaned.replace("```json", "").replace("```", "").strip()
-                return json.loads(cleaned)
-        except Exception as e:
-            print("Gemini MCQ failed:", e)
+            questions = _parse_json_array(response.output_text)
+            if questions:
+                return _clean_mcqs(questions, difficulty)[:count]
+        except Exception as exc:
+            print("OpenAI MCQ failed:", exc)
 
-    if os.getenv("OPENAI_API_KEY"):
-        from openai import OpenAI
-        client = OpenAI()
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Return only valid JSON: an array of MCQ objects with keys "
-                        "question, options, correct_answer, explanation. correct_answer must be A, B, C, or D."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Generate {count} {difficulty} {mode} MCQs from this text:\n{text[:18000]}",
-                },
-            ],
+    return _local_mcqs(source, count, difficulty)
+
+
+def _clean_mcqs(questions: list[dict[str, Any]], difficulty: str) -> list[dict[str, Any]]:
+    cleaned = []
+    for item in questions:
+        options = item.get("options") or []
+        if not isinstance(options, list) or len(options) < 4:
+            continue
+        answer = str(item.get("correct_answer", "A")).strip().upper()[:1]
+        if answer not in {"A", "B", "C", "D"}:
+            answer = "A"
+        cleaned.append(
+            {
+                "question": str(item.get("question") or "What is the best answer?").strip(),
+                "options": [str(x).strip() for x in options[:4]],
+                "correct_answer": answer,
+                "explanation": str(item.get("explanation") or "Review this concept in your note.").strip(),
+                "difficulty": difficulty,
+            }
         )
-        return json.loads(response.output_text)
+    return cleaned
 
+
+def _local_mcqs(text: str, count: int, difficulty: str) -> list[dict[str, Any]]:
     terms = extract_terms(text)
     questions = []
-    for index, term in enumerate(terms[:count], start=1):
+    for term in terms[:count]:
         questions.append(
             {
                 "question": f"Which statement best describes {term}?",
                 "options": [
                     f"{term} is a key concept from the uploaded note.",
                     f"{term} is unrelated to the uploaded note.",
-                    f"{term} is only used for grading attendance.",
+                    f"{term} is only used for attendance tracking.",
                     f"{term} is a file storage provider.",
                 ],
                 "correct_answer": "A",
@@ -130,7 +181,7 @@ Generate {count} {difficulty} {mode} MCQs from this text:
             "question": "What should you do after uploading notes?",
             "options": ["Generate study materials", "Delete the note", "Ignore the summary", "Close the app"],
             "correct_answer": "A",
-            "explanation": "The app turns notes into summaries, MCQs, flashcards, and quizzes.",
+            "explanation": "ExamAI turns notes into summaries, MCQs, flashcards, and tutor context.",
             "difficulty": difficulty,
         }
     ]
@@ -148,52 +199,46 @@ def generate_flashcards(text: str, count: int = 10) -> list[dict[str, str]]:
 
 
 def chat_with_note(text: str, message: str) -> str:
-        if GEMINI_API_KEY:
+    note = (text or "").strip()
+    question = (message or "").strip()
+    prompt = (
+        "You are a friendly exam coach. Answer from the note when possible, explain clearly, "
+        "give one example, and end with one tiny practice task.\n\n"
+        f"NOTE:\n{note[:16000]}\n\nQUESTION:\n{question}"
+    )
+
+    model = _gemini_model()
+    if model is not None and note:
         try:
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            response = model.generate_content(
-                f"""
-You are a friendly exam coach.
-
-NOTE:
-{text[:16000]}
-
-QUESTION:
-{message}
-"""
-            )
-            if response and response.text:
+            response = model.generate_content(prompt)
+            if response and getattr(response, "text", ""):
                 return response.text.strip()
-        except Exception as e:
-            print("Gemini chat failed:", e)
+        except Exception as exc:
+            print("Gemini chat failed:", exc)
 
-    if os.getenv("OPENAI_API_KEY"):
-        from openai import OpenAI
-        client = OpenAI()
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a friendly exam coach. Answer only from the uploaded note when possible. "
-                        "Explain clearly, give examples, and suggest what to revise next."
-                    ),
-                },
-                {"role": "user", "content": f"NOTE:\n{text[:16000]}\n\nQUESTION:\n{message}"},
-            ],
-        )
-        return response.output_text.strip()
+    client = _openai_client()
+    if client is not None and note:
+        try:
+            response = client.responses.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                input=[
+                    {"role": "system", "content": "You are a patient, exam-focused study tutor."},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            return response.output_text.strip()
+        except Exception as exc:
+            print("OpenAI chat failed:", exc)
 
-    lower = message.lower()
-    terms = extract_terms(text)
-    if "likely" in lower or "question" in lower:
+    lower = question.lower()
+    terms = extract_terms(note)
+    if "likely" in lower or "question" in lower or "mcq" in lower:
         return "Likely exam questions:\n" + "\n".join(f"- Explain {term} with an example." for term in terms[:6])
-    if "simple" in lower or "new" in lower:
-        return "Simple explanation:\n" + summarize_text(text, "short")
-    if "weak" in lower:
-        return summarize_text(text, "weak_topics")
-    return "Here is what your note suggests:\n" + summarize_text(text, "detailed")
+    if "simple" in lower or "new" in lower or "12" in lower:
+        return "Simple explanation:\n" + summarize_text(note, "short")
+    if "weak" in lower or "struggle" in lower:
+        return summarize_text(note, "weak_topics")
+    return "Here is what your note suggests:\n" + summarize_text(note, "detailed")
 
 
 def analyze_topics(text: str, answers: dict[int, str] | None = None) -> dict[str, list[str]]:
@@ -207,23 +252,27 @@ def analyze_topics(text: str, answers: dict[int, str] | None = None) -> dict[str
 
 def predict_exam(text: str) -> dict[str, list[str]]:
     terms = extract_terms(text)
-    if os.getenv("OPENAI_API_KEY"):
-        from openai import OpenAI
-        client = OpenAI()
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Return valid JSON with keys likely_topics, likely_theory_questions, "
-                        "likely_mcqs, high_priority_concepts. Each value must be an array of strings."
-                    ),
-                },
-                {"role": "user", "content": text[:16000]},
-            ],
-        )
-        return json.loads(response.output_text)
+    client = _openai_client()
+    if client is not None and text:
+        try:
+            response = client.responses.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+                input=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Return valid JSON with keys likely_topics, likely_theory_questions, "
+                            "likely_mcqs, high_priority_concepts. Each value must be an array of strings."
+                        ),
+                    },
+                    {"role": "user", "content": text[:16000]},
+                ],
+            )
+            parsed = json.loads(response.output_text)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception as exc:
+            print("OpenAI exam prediction failed:", exc)
     return {
         "likely_topics": terms[:8],
         "likely_theory_questions": [f"Explain {term} and its importance." for term in terms[:5]],
@@ -257,7 +306,7 @@ def build_study_plan(text: str, exam_date: str, daily_minutes: int, goal: str) -
 
 
 def extract_terms(text: str) -> list[str]:
-    words = re.findall(r"\b[A-Za-z][A-Za-z\-]{4,}\b", text)
+    words = re.findall(r"\b[A-Za-z][A-Za-z\-]{4,}\b", text or "")
     stop_words = {
         "about",
         "after",

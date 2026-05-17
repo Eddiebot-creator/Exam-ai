@@ -1,27 +1,33 @@
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from database import get_db, InstitutionCourse
 
 router = APIRouter(prefix="/institution", tags=["Parent Lecturer Institution Layer"])
 
-COURSES = {}
 REPORTS = {}
 
 @router.post("/lecturer/course")
-def create_course(payload: dict):
+def create_course(payload: dict, db: Session = Depends(get_db)):
     course_code = payload.get("course_code", "CSC301")
-    course = {
-        "course_code": course_code,
-        "lecturer": payload.get("lecturer", "Lecturer"),
-        "title": payload.get("title", "Course"),
-        "materials": payload.get("materials", []),
-        "join_code": f"{course_code}-EXAMAI",
-    }
-    COURSES[course_code] = course
-    return course
+    course = db.query(InstitutionCourse).filter_by(course_code=course_code).first()
+    if course is None:
+        course = InstitutionCourse(course_code=course_code, join_code=f"{course_code}-EXAMAI")
+    course.lecturer = payload.get("lecturer", "Lecturer")
+    course.title = payload.get("title", "Course")
+    course.materials = payload.get("materials", [])
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    return _course_payload(course)
 
 @router.get("/lecturer/course/{course_code}")
-def get_course(course_code: str):
-    return COURSES.get(course_code, {"error": "Course not found"})
+def get_course(course_code: str, db: Session = Depends(get_db)):
+    course = db.query(InstitutionCourse).filter_by(course_code=course_code).first()
+    if course is None:
+        return {"error": "Course not found"}
+    return _course_payload(course)
 
 @router.post("/parent-report/{user_id}")
 def parent_report(user_id: int, payload: dict):
@@ -44,4 +50,15 @@ def class_insights(course_code: str):
         "anonymized_weak_areas": ["Recursion", "Graphs", "Database normalization"],
         "recommended_lecturer_action": "Spend 20 minutes revising the top weak area before the next quiz.",
         "privacy": "Only anonymized class-wide insight is shown.",
+    }
+
+def _course_payload(course: InstitutionCourse):
+    return {
+        "id": course.id,
+        "course_code": course.course_code,
+        "lecturer": course.lecturer,
+        "title": course.title,
+        "materials": course.materials or [],
+        "join_code": course.join_code,
+        "created_at": course.created_at.isoformat() if course.created_at else None,
     }

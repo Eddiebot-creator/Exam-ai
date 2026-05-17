@@ -61,6 +61,38 @@ class ApiClient {
     return _map(response);
   }
 
+  Future<List<dynamic>> aiHistory(int userId) async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/ai/history/$userId'))
+        .timeout(const Duration(seconds: 25));
+    return _list(response);
+  }
+
+  Future<Map<String, dynamic>> noteMaterials(int userId, int noteId) {
+    return getJson('/notes/$noteId/materials?user_id=$userId');
+  }
+
+  Future<Map<String, dynamic>> regenerateNoteMaterials(int userId, int noteId) {
+    return postJson('/notes/$noteId/regenerate', {'user_id': userId});
+  }
+
+  Future<Map<String, dynamic>> startQuiz(int userId, {int limit = 10, String mode = 'practice'}) {
+    return getJson('/quiz/start/$userId?mode=$mode&limit=$limit');
+  }
+
+  Future<Map<String, dynamic>> submitQuiz(
+    int userId,
+    List<Map<String, dynamic>> answers, {
+    String mode = 'practice',
+    int secondsUsed = 0,
+  }) {
+    return postJson('/quiz/submit/$userId', {
+      'mode': mode,
+      'answers': answers,
+      'seconds_used': secondsUsed,
+    });
+  }
+
   Future<Map<String, dynamic>> recordStudyTime(int userId, int? noteId, String activity, int seconds) async {
     final response = await http.post(Uri.parse('$baseUrl/progress/study-time'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'user_id': userId, 'note_id': noteId, 'activity': activity, 'seconds': seconds})).timeout(const Duration(seconds: 25));
     return _map(response);

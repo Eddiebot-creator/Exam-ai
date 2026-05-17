@@ -105,11 +105,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             children: widget.notes.map((note) {
               final map = note as Map;
               return SoftCard(
-                onTap: () => showFeatureSheet(
-                  context,
-                  map['title']?.toString() ?? 'Note',
-                  '${map['summary']?.toString().isNotEmpty == true ? map['summary'] : 'This note can produce summaries, flashcards, MCQs, mind maps and tutor context.'}',
-                ),
+                onTap: () => _openNote(map),
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const CircleIcon(icon: Icons.description_rounded, color: CalmTheme.teal),
@@ -153,6 +149,110 @@ class _LibraryScreenState extends State<LibraryScreen> {
       await widget.api.uploadFile(widget.userId, result.files.single.name, result.files.single);
       widget.onChanged();
       if (mounted) toast(context, 'File uploaded and processing started.');
+    } catch (e) {
+      if (mounted) toast(context, e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _openNote(Map note) async {
+    final noteId = (note['id'] as num?)?.toInt();
+    if (noteId == null) return;
+    Map<String, dynamic>? materials;
+    try {
+      materials = await widget.api.noteMaterials(widget.userId, noteId);
+    } catch (_) {
+      materials = null;
+    }
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final cards = (materials?['flashcards'] as List?) ?? [];
+        final mcqs = (materials?['mcqs'] as List?) ?? [];
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: .72,
+            minChildSize: .42,
+            maxChildSize: .92,
+            builder: (context, controller) => ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              children: [
+                Text(note['title']?.toString() ?? 'Note', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                SoftText(note['summary']?.toString().isNotEmpty == true ? note['summary'].toString() : 'This note can produce summaries, flashcards, MCQs and tutor context.'),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    PrimaryCalmButton(
+                      label: 'Generate questions',
+                      icon: Icons.auto_awesome_rounded,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _generateNoteMaterials(noteId);
+                      },
+                      compact: true,
+                    ),
+                    SecondaryCalmButton(
+                      label: 'Refresh materials',
+                      icon: Icons.refresh_rounded,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _openNote(note);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text('Flashcards (${cards.length})', style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                if (cards.isEmpty)
+                  const SoftText('No flashcards found yet. Generate materials to create them.')
+                else
+                  for (final item in cards.take(6))
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.style_rounded),
+                      title: Text((item as Map)['question']?.toString() ?? 'Flashcard'),
+                      subtitle: Text(item['answer']?.toString() ?? ''),
+                    ),
+                const SizedBox(height: 14),
+                Text('MCQs (${mcqs.length})', style: const TextStyle(fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                if (mcqs.isEmpty)
+                  const SoftText('No MCQs found yet. Generate questions to create quiz items.')
+                else
+                  for (final item in mcqs.take(6))
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.quiz_rounded),
+                      title: Text((item as Map)['question']?.toString() ?? 'Question'),
+                      subtitle: Text(item['explanation']?.toString() ?? ''),
+                    ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _generateNoteMaterials(int noteId) async {
+    setState(() => busy = true);
+    try {
+      final response = await widget.api.regenerateNoteMaterials(widget.userId, noteId);
+      final generated = response['generated'] as Map? ?? {};
+      widget.onChanged();
+      if (mounted) {
+        toast(context, 'Generated ${generated['mcqs'] ?? 0} MCQs and ${generated['flashcards'] ?? 0} flashcards.');
+      }
     } catch (e) {
       if (mounted) toast(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {

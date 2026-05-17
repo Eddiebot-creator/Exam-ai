@@ -31,6 +31,7 @@ class TutorScreen extends StatefulWidget {
 
 class _TutorScreenState extends State<TutorScreen> {
   final input = TextEditingController();
+  final scroll = ScrollController();
 
   final messages = <TutorMessage>[
     TutorMessage(
@@ -40,10 +41,18 @@ class _TutorScreenState extends State<TutorScreen> {
   ];
 
   bool sending = false;
+  bool loadingHistory = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
 
   @override
   void dispose() {
     input.dispose();
+    scroll.dispose();
     super.dispose();
   }
 
@@ -85,6 +94,12 @@ class _TutorScreenState extends State<TutorScreen> {
                         ),
                       ),
                       CalmPill(
+                        icon: Icons.history_rounded,
+                        label: 'History',
+                        onTap: _openHistory,
+                      ),
+                      const SizedBox(width: 8),
+                      CalmPill(
                         icon: Icons.mic_rounded,
                         label: 'Voice mode',
                         onTap: widget.onVoice,
@@ -122,9 +137,10 @@ class _TutorScreenState extends State<TutorScreen> {
                 ),
                 Expanded(
                   child: ListView.builder(
+                    controller: scroll,
                     reverse: false,
                     padding: const EdgeInsets.all(16),
-                    itemCount: messages.length + (sending ? 1 : 0),
+                    itemCount: messages.length + ((sending || loadingHistory) ? 1 : 0),
                     itemBuilder: (context, i) {
                       if (i == messages.length) return const TypingBubble();
                       return AnimatedTutorBubble(message: messages[i], index: i);
@@ -138,6 +154,65 @@ class _TutorScreenState extends State<TutorScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final rows = await widget.api.aiHistory(widget.userId);
+      if (!mounted) return;
+      if (rows.isNotEmpty) {
+        setState(() {
+          messages
+            ..clear()
+            ..addAll(rows.map((row) {
+              final map = row as Map;
+              return TutorMessage(map['role'] == 'user', map['content']?.toString() ?? '');
+            }));
+        });
+      }
+    } catch (_) {
+      // Keep the welcome message if history cannot be loaded.
+    } finally {
+      if (mounted) {
+        setState(() => loadingHistory = false);
+        _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _openHistory() async {
+    await _loadHistory();
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Previous tutor chats', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: messages.length,
+                  separatorBuilder: (_, __) => Divider(color: dividerColor(context)),
+                  itemBuilder: (context, index) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(messages[index].me ? Icons.person_rounded : Icons.smart_toy_rounded),
+                    title: Text(messages[index].me ? 'You' : 'ExamAI Tutor', style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text(messages[index].text, maxLines: 3, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -160,6 +235,7 @@ class _TutorScreenState extends State<TutorScreen> {
           ),
         ),
       );
+      _scrollToBottom();
     }
   }
 
@@ -172,6 +248,7 @@ class _TutorScreenState extends State<TutorScreen> {
       input.clear();
       sending = true;
     });
+    _scrollToBottom();
 
     try {
       final noteId = widget.notes.isNotEmpty
@@ -192,6 +269,7 @@ class _TutorScreenState extends State<TutorScreen> {
       setState(() {
         messages.add(TutorMessage(false, answer));
       });
+      _scrollToBottom();
     } catch (e) {
       setState(() {
         messages.add(
@@ -201,11 +279,23 @@ class _TutorScreenState extends State<TutorScreen> {
           ),
         );
       });
+      _scrollToBottom();
     } finally {
       if (mounted) {
         setState(() => sending = false);
       }
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scroll.hasClients) return;
+      scroll.animateTo(
+        scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 }
 

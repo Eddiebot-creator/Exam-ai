@@ -50,18 +50,8 @@ async def upload(
     raw = await file.read()
     filename = file.filename or "uploaded_file"
 
-    try:
-        if filename.lower().endswith((".txt", ".md", ".csv")):
-            extracted_text = raw.decode("utf-8", errors="ignore")
-        else:
-            extracted_text = (
-                f"Uploaded file: {filename}. "
-                "Text extraction for this file type will be processed later."
-            )
-    except Exception:
-        extracted_text = f"Uploaded file: {filename}. Text extraction failed."
-
-    extracted_text = extracted_text.replace("\x00", "")
+    extracted_text = extract_text(filename, raw).replace("\x00", "").strip()
+    topics = detect_topics(extracted_text)
 
     note = Note(
         user_id=user_id,
@@ -69,32 +59,69 @@ async def upload(
         file_name=filename,
         file_path="",
         extracted_text=extracted_text,
-        topics=[],
-        summary=extracted_text[:500],
+        topics=topics,
+        summary=make_summary(extracted_text),
     )
 
     db.add(note)
     db.commit()
     db.refresh(note)
+    generated = gen(db, user_id, note)
 
+    data = payload(note)
+    data.update({
+        "message": "Note uploaded and study materials generated.",
+        "generated": generated,
+    })
+    return data
+
+@router.get('/{note_id}/materials')
+def note_materials(note_id: int, user_id: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter_by(id=note_id, user_id=user_id).first()
+    if not note:
+        raise HTTPException(404, 'Note not found.')
+    cards = db.query(Flashcard).filter_by(user_id=user_id, note_id=note_id).all()
+    questions = db.query(Mcq).filter_by(user_id=user_id, note_id=note_id).all()
     return {
-        "id": note.id,
-        "title": note.title,
-        "file_name": note.file_name,
-        "summary": note.summary,
-        "message": "Note uploaded successfully",
-        }
+        'note': payload(note),
+        'flashcards': [
+            {'id': x.id, 'topic': x.topic, 'question': x.question, 'answer': x.answer, 'mastered': x.mastered}
+            for x in cards
+        ],
+        'mcqs': [
+            {'id': x.id, 'topic': x.topic, 'question': x.question, 'options': x.options, 'answer_index': x.answer_index, 'explanation': x.explanation}
+            for x in questions
+        ],
+    }
+
+@router.post('/{note_id}/regenerate')
+def regenerate(note_id: int, p: dict, db: Session = Depends(get_db)):
+    user_id = int(p.get('user_id', 1))
+    note = db.query(Note).filter_by(id=note_id, user_id=user_id).first()
+    if not note:
+        raise HTTPException(404, 'Note not found.')
+    db.query(Flashcard).filter_by(user_id=user_id, note_id=note_id).delete()
+    db.query(Mcq).filter_by(user_id=user_id, note_id=note_id).delete()
+    db.commit()
+    generated = gen(db, user_id, note)
+    return {'ok': True, 'note': payload(note), 'generated': generated}
     
 def gen(db, user_id, n):
+    flashcard_count = 0
+    mcq_count = 0
     try:
         for x in make_flashcards(user_id, n.id, n.extracted_text or '', n.topics or []):
             db.add(Flashcard(**x))
+            flashcard_count += 1
         for x in make_mcqs(user_id, n.id, n.extracted_text or '', n.topics or []):
             db.add(Mcq(**x))
+            mcq_count += 1
         db.commit()
-    except Exception:
+        return {'flashcards': flashcard_count, 'mcqs': mcq_count}
+    except Exception as exc:
         # Do not fail note saving if generated learning materials fail.
         db.rollback()
+        return {'flashcards': 0, 'mcqs': 0, 'error': str(exc)}
 
 def payload(n):
     return {

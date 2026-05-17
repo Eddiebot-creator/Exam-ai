@@ -38,8 +38,66 @@ class AdaptiveState(Base):
     __tablename__='adaptive_state'; id=Column(Integer,primary_key=True); user_id=Column(Integer,index=True,unique=True); readiness=Column(Integer,default=50); emotional_tone=Column(String(80),default='encouraging'); tutor_style=Column(String(80),default='simple'); next_best_action=Column(Text,default='Continue studying'); daily_mission=Column(JSON,default=dict); recommended_room=Column(String(180),default=''); exam_risk=Column(String(80),default='normal'); updated_at=Column(DateTime,default=datetime.utcnow)
 class KnowledgeEdge(Base):
     __tablename__='knowledge_edges'; id=Column(Integer,primary_key=True); user_id=Column(Integer,index=True); source_topic=Column(String(180)); target_topic=Column(String(180)); relation=Column(String(80),default='prerequisite'); strength=Column(Float,default=0.5)
+class InstitutionCourse(Base):
+    __tablename__='institution_courses'; id=Column(Integer,primary_key=True); course_code=Column(String(80),index=True); lecturer=Column(String(180),default=''); title=Column(String(220),default=''); join_code=Column(String(80),index=True); materials=Column(JSON,default=list); created_at=Column(DateTime,default=datetime.utcnow)
+class OfflineAction(Base):
+    __tablename__='offline_actions'; id=Column(Integer,primary_key=True); user_id=Column(Integer,index=True); action_type=Column(String(140)); payload=Column(JSON,default=dict); status=Column(String(40),default='queued'); result=Column(JSON,default=dict); created_at=Column(DateTime,default=datetime.utcnow); synced_at=Column(DateTime,nullable=True)
 
-def init_db(): os.makedirs('data',exist_ok=True); os.makedirs('uploads',exist_ok=True); Base.metadata.create_all(bind=engine)
+SQLITE_COLUMN_MIGRATIONS={
+    'users': {
+        'password_hash':'password_hash VARCHAR(255) DEFAULT ""',
+        'avatar_character':'avatar_character VARCHAR(80) DEFAULT "robot"',
+        'profile_image_url':'profile_image_url VARCHAR(600) DEFAULT ""',
+        'bio':'bio TEXT DEFAULT ""',
+        'biometric_enabled':'biometric_enabled BOOLEAN DEFAULT 0',
+        'preferred_style':'preferred_style VARCHAR(80) DEFAULT "simple"',
+        'exam_course':'exam_course VARCHAR(160) DEFAULT ""',
+        'exam_date':'exam_date VARCHAR(50) DEFAULT ""',
+        'target_score':'target_score INTEGER DEFAULT 80',
+        'xp':'xp INTEGER DEFAULT 0',
+        'level':'level INTEGER DEFAULT 1',
+        'streak_days':'streak_days INTEGER DEFAULT 0',
+        'created_at':'created_at DATETIME',
+    },
+    'notes': {
+        'file_name':'file_name VARCHAR(255) DEFAULT ""',
+        'file_path':'file_path VARCHAR(600) DEFAULT ""',
+        'extracted_text':'extracted_text TEXT DEFAULT ""',
+        'topics':'topics JSON',
+        'summary':'summary TEXT DEFAULT ""',
+        'created_at':'created_at DATETIME',
+    },
+    'flashcards': {
+        'topic':'topic VARCHAR(160) DEFAULT "General"',
+        'mastered':'mastered BOOLEAN DEFAULT 0',
+        'ease':'ease FLOAT DEFAULT 2.5',
+        'interval_days':'interval_days INTEGER DEFAULT 1',
+        'due_at':'due_at DATETIME',
+    },
+    'mcqs': {
+        'topic':'topic VARCHAR(160) DEFAULT "General"',
+        'explanation':'explanation TEXT DEFAULT ""',
+    },
+}
+
+def _apply_sqlite_migrations():
+    if not DATABASE_URL.startswith('sqlite'):
+        return
+    with engine.begin() as conn:
+        for table, columns in SQLITE_COLUMN_MIGRATIONS.items():
+            existing={row[1] for row in conn.exec_driver_sql(f'PRAGMA table_info({table})').fetchall()}
+            if not existing:
+                continue
+            for name, ddl in columns.items():
+                if name in existing:
+                    continue
+                conn.exec_driver_sql(f'ALTER TABLE {table} ADD COLUMN {ddl}')
+
+def init_db():
+    os.makedirs('data',exist_ok=True)
+    os.makedirs('uploads',exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+    _apply_sqlite_migrations()
 def get_db():
     db=SessionLocal()
     try: yield db
