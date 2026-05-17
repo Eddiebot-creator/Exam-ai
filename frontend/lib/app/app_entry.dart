@@ -8,6 +8,7 @@ import '../screens/auth/biometric_unlock_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/splash_screen.dart';
 import '../screens/dashboard/calm_student_app.dart';
+import '../screens/onboarding/smart_onboarding_screen.dart';
 import '../utils/ui_helpers.dart';
 
 class AppEntry extends StatefulWidget {
@@ -70,6 +71,9 @@ class _AppEntryState extends State<AppEntry> {
     if (loading) return const SplashScreen();
     if (lockedUser != null) return BiometricUnlockScreen(user: lockedUser!, onUnlock: _unlock, onUsePassword: () => setState(() => lockedUser = null), onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode);
     if (user == null) return LoginScreen(initialApi: api, onSuccess: _setUser, onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode);
+    if ((user!['exam_course']?.toString().isEmpty ?? true) || (user!['exam_date']?.toString().isEmpty ?? true)) {
+      return SmartOnboardingScreen(api: api, user: user!, onComplete: _updateUser, onLogout: _logout);
+    }
     return CalmStudentApp(api: api, user: user!, onLogout: _logout, onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode, onUserChanged: _updateUser);
   }
 }

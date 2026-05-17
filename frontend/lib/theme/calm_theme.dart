@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 
 class CalmTheme {
   static const teal = Color(0xff0f9f95);
-  static const mint = Color(0xffe7fbf7);
-  static const cream = Color(0xfffffbf4);
-  static const ink = Color(0xff172331);
-  static const softInk = Color(0xff627083);
-  static const orange = Color(0xffff9f43);
-  static const gold = Color(0xffffc857);
-  static const purple = Color(0xff8b5cf6);
-  static const blue = Color(0xff3b82f6);
-  static const indigo = Color(0xff6366f1);
-  static const green = Color(0xff22c55e);
-  static const rose = Color(0xffff6b8a);
+  static const mint = Color(0xffdff8ef);
+  static const cream = Color(0xfff7f3e8);
+  static const ink = Color(0xff101923);
+  static const softInk = Color(0xff5d6878);
+  static const orange = Color(0xffe16f2d);
+  static const gold = Color(0xffc99b22);
+  static const purple = Color(0xff6d5bd0);
+  static const blue = Color(0xff2563eb);
+  static const indigo = Color(0xff4452c7);
+  static const green = Color(0xff159947);
+  static const rose = Color(0xffd84d67);
+  static const graphite = Color(0xff202a35);
+  static const paper = Color(0xfffbfcfa);
 
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(seedColor: teal, brightness: Brightness.light, surface: Colors.white);
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: scheme.copyWith(primary: teal, secondary: purple, tertiary: orange, surface: Colors.white),
-      scaffoldBackgroundColor: const Color(0xfff7fbfa),
+      colorScheme: scheme.copyWith(primary: teal, secondary: purple, tertiary: orange, surface: paper),
+      scaffoldBackgroundColor: const Color(0xfff4f7f5),
       fontFamily: 'Arial',
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
         TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
@@ -38,11 +40,11 @@ class CalmTheme {
         filled: true,
         fillColor: const Color(0xfff2f7f6),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: teal, width: 1.4)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: teal, width: 1.4)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: Colors.white,
+        backgroundColor: paper,
         indicatorColor: teal.withOpacity(.12),
         labelTextStyle: WidgetStateProperty.all(const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
       ),
@@ -65,8 +67,8 @@ class CalmTheme {
         filled: true,
         fillColor: Colors.white.withOpacity(.06),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: const BorderSide(color: Color(0xff35e0d1), width: 1.4)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xff35e0d1), width: 1.4)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: const Color(0xff0d1825),

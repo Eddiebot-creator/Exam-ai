@@ -21,10 +21,10 @@ class CalmPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(999),
+    borderRadius: BorderRadius.circular(8),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: CalmTheme.teal.withOpacity(.10), borderRadius: BorderRadius.circular(999), border: Border.all(color: CalmTheme.teal.withOpacity(.22))),
+      decoration: BoxDecoration(color: CalmTheme.teal.withOpacity(.10), borderRadius: BorderRadius.circular(8), border: Border.all(color: CalmTheme.teal.withOpacity(.22))),
       child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 16, color: CalmTheme.teal), const SizedBox(width: 6), Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12))]),
     ),
   );
@@ -35,7 +35,7 @@ class CircleIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
   @override
-  Widget build(BuildContext context) => CircleAvatar(backgroundColor: color.withOpacity(.14), child: Icon(icon, color: color));
+  Widget build(BuildContext context) => Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withOpacity(.14), borderRadius: BorderRadius.circular(8)), child: Icon(icon, color: color));
 }
 
 class ResponsiveCalmGrid extends StatelessWidget {

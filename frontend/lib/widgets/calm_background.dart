@@ -9,57 +9,46 @@ class CalmBackground extends StatefulWidget {
   State<CalmBackground> createState() => _CalmBackgroundState();
 }
 
-class _CalmBackgroundState extends State<CalmBackground> with SingleTickerProviderStateMixin {
-  late final AnimationController controller;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
+class _CalmBackgroundState extends State<CalmBackground> {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: dark
-                  ? const [Color(0xff07111d), Color(0xff0d1b2a), Color(0xff07111d)]
-                  : const [Color(0xfffffbf4), Color(0xffeefcf8), Color(0xfff7fbfa)],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(top: -80 + controller.value * 20, left: -40, child: _Glow(size: 250, color: CalmTheme.teal.withOpacity(dark ? .12 : .16))),
-              Positioned(bottom: -80, right: -30 + controller.value * 25, child: _Glow(size: 260, color: CalmTheme.purple.withOpacity(dark ? .10 : .12))),
-              widget.child,
-            ],
-          ),
-        );
-      },
+    return Container(
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xff07111d) : const Color(0xfff4f7f5),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: _GridPainter(dark: dark))),
+          widget.child,
+        ],
+      ),
     );
   }
 }
 
-class _Glow extends StatelessWidget {
-  const _Glow({required this.size, required this.color});
-  final double size;
-  final Color color;
+class _GridPainter extends CustomPainter {
+  const _GridPainter({required this.dark});
+  final bool dark;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color, boxShadow: [BoxShadow(color: color, blurRadius: 80, spreadRadius: 20)]));
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()
+      ..color = (dark ? Colors.white : CalmTheme.graphite).withOpacity(dark ? .035 : .045)
+      ..strokeWidth = 1;
+    const gap = 32.0;
+    for (double x = 0; x < size.width; x += gap) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), line);
+    }
+    for (double y = 0; y < size.height; y += gap) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), line);
+    }
+    final band = Paint()
+      ..color = (dark ? CalmTheme.teal : CalmTheme.mint).withOpacity(dark ? .08 : .55)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 96), band);
   }
+
+  @override
+  bool shouldRepaint(covariant _GridPainter oldDelegate) => oldDelegate.dark != dark;
 }

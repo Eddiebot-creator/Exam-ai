@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
@@ -101,6 +102,36 @@ def _mission(topic: str, difficulty: str, tone: str, days_left: int, readiness: 
         "tasks": tasks,
         "message": f"Focus on {topic}. You are {readiness}% ready. I adjusted today’s plan automatically.",
     }
+
+def seed_onboarding_context(db: Session, user_id: int, struggle: str = "", course: str = "") -> dict:
+    topic = (struggle or "General revision").strip() or "General revision"
+    memory = _get_or_create_memory(db, user_id)
+    weak = [topic] + [x for x in list(memory.weak_topics or []) if x != topic]
+    memory.weak_topics = weak[:8]
+    memory.preferred_style = "simple_analogy"
+    memory.updated_at = datetime.utcnow()
+
+    mastery = _get_or_create_mastery(db, user_id, topic)
+    mastery.mastery = min(mastery.mastery or 0.4, 0.38)
+    mastery.confidence = min(mastery.confidence or 0.5, 0.45)
+    mastery.explanation_style = "simple_analogy"
+    mastery.updated_at = datetime.utcnow()
+
+    user = db.query(User).filter_by(id=user_id).first()
+    days_left = _days_left(user)
+    readiness = max(35, min(75, int((user.target_score if user else 80) * 0.7)))
+    mission = _mission(topic, "easy", "encouraging", days_left, readiness)
+    state = _get_or_create_state(db, user_id)
+    state.readiness = readiness
+    state.emotional_tone = "encouraging"
+    state.tutor_style = "simple_analogy"
+    state.next_best_action = mission["tasks"][0]
+    state.daily_mission = mission
+    state.recommended_room = f"{topic} peer study room"
+    state.exam_risk = _exam_risk(readiness, days_left, len(memory.weak_topics or []))
+    state.updated_at = datetime.utcnow()
+    db.commit()
+    return adaptive_home(db, user_id)
 
 def process_learning_event(db: Session, payload: dict) -> dict:
     user_id = int(payload.get("user_id", 1))

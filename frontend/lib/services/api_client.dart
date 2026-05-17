@@ -57,21 +57,47 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> updateProfile(int userId, {String? fullName, String? email, String? avatarCharacter, String? bio}) async {
-    final response = await http.put(Uri.parse('$baseUrl/auth/profile/$userId'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({if (fullName != null) 'full_name': fullName.trim(), if (email != null) 'email': email.trim(), if (avatarCharacter != null) 'avatar_character': avatarCharacter, if (bio != null) 'bio': bio.trim()})).timeout(const Duration(seconds: 30));
+    final response = await http.put(Uri.parse('$baseUrl/profile/$userId'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({if (fullName != null) 'full_name': fullName.trim(), if (email != null) 'email': email.trim(), if (avatarCharacter != null) 'avatar_character': avatarCharacter, if (bio != null) 'bio': bio.trim()})).timeout(const Duration(seconds: 30));
     return _map(response);
   }
 
   Future<Map<String, dynamic>> changePassword(int userId, String currentPassword, String newPassword) async {
-    final response = await http.put(Uri.parse('$baseUrl/auth/password/$userId'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'current_password': currentPassword, 'new_password': newPassword})).timeout(const Duration(seconds: 30));
+    final response = await http.put(Uri.parse('$baseUrl/profile/$userId/password'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'current_password': currentPassword, 'new_password': newPassword})).timeout(const Duration(seconds: 30));
     return _map(response);
   }
 
   Future<Map<String, dynamic>> uploadProfilePicture(int userId, PlatformFile file) async {
     if (file.path == null) throw Exception('File path not available.');
-    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/profile-picture/$userId'));
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/profile/$userId/picture'));
     request.files.add(await http.MultipartFile.fromPath('file', file.path!));
     final streamed = await request.send().timeout(const Duration(seconds: 60));
     return _map(http.Response(await streamed.stream.bytesToString(), streamed.statusCode));
+  }
+
+  Future<Map<String, dynamic>> completeOnboarding(
+    int userId, {
+    required String course,
+    required String examDate,
+    required String struggle,
+    int targetScore = 80,
+  }) async {
+    final userResponse = await http.put(
+      Uri.parse('$baseUrl/auth/onboarding/$userId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'exam_course': course.trim(),
+        'exam_date': examDate.trim(),
+        'target_score': targetScore,
+        'preferred_style': 'simple_analogy',
+      }),
+    ).timeout(const Duration(seconds: 30));
+    final user = _map(userResponse);
+    await postJson('/autonomous/onboarding', {
+      'user_id': userId,
+      'course': course.trim(),
+      'struggle': struggle.trim(),
+    });
+    return user;
   }
 
 
@@ -103,6 +129,53 @@ Future<Map<String, dynamic>> learningEvent(Map<String, dynamic> payload) async {
 
 Future<Map<String, dynamic>> nextBestAction(int userId) async {
   return getJson('/autonomous/next-best-action/$userId');
+}
+
+Future<List<dynamic>> studyRooms() async {
+  final response = await http
+      .get(Uri.parse('$baseUrl/study-rooms'))
+      .timeout(const Duration(seconds: 25));
+  return _list(response);
+}
+
+Future<Map<String, dynamic>> createStudyRoom(int userId, String name, String topic) {
+  return postJson('/study-rooms', {
+    'owner_id': userId,
+    'name': name,
+    'topic': topic,
+  });
+}
+
+Future<Map<String, dynamic>> offlineQueue(int userId) {
+  return getJson('/offline-sync/queue/$userId');
+}
+
+Future<Map<String, dynamic>> queueOfflineAction(int userId, String actionType, Map<String, dynamic> payload) {
+  return postJson('/offline-sync/queue/$userId', {
+    'action_type': actionType,
+    'payload': payload,
+  });
+}
+
+Future<Map<String, dynamic>> syncOfflineQueue(int userId) {
+  return postJson('/offline-sync/sync/$userId', {});
+}
+
+Future<Map<String, dynamic>> createInstitutionCourse({
+  required String courseCode,
+  required String lecturer,
+  required String title,
+}) {
+  return postJson('/institution/lecturer/course', {
+    'course_code': courseCode,
+    'lecturer': lecturer,
+    'title': title,
+    'materials': [],
+  });
+}
+
+Future<Map<String, dynamic>> classInsights(String courseCode) {
+  return getJson('/institution/class-insights/$courseCode');
 }
 
   Map<String, dynamic> _map(http.Response response) {

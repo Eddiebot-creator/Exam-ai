@@ -29,7 +29,7 @@ class _PrimaryCalmButtonState extends State<PrimaryCalmButton> {
           label: Text(widget.label),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(horizontal: widget.compact ? 14 : 18, vertical: widget.compact ? 12 : 15),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             textStyle: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ),
@@ -50,7 +50,7 @@ class SecondaryCalmButton extends StatelessWidget {
       onPressed: onTap,
       icon: Icon(icon, size: 18),
       label: Text(label),
-      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
+      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), textStyle: const TextStyle(fontWeight: FontWeight.w800)),
     );
   }
 }

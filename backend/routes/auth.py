@@ -21,3 +21,14 @@ def biometric(user_id:int,p:dict,db:Session=Depends(get_db)):
     u=db.query(User).filter_by(id=user_id).first();
     if not u: raise HTTPException(404,'User not found.')
     u.biometric_enabled=bool(p.get('enabled',True)); db.commit(); db.refresh(u); return user_payload(u)
+
+@router.put('/onboarding/{user_id}')
+def onboarding(user_id:int,p:dict,db:Session=Depends(get_db)):
+    u=db.query(User).filter_by(id=user_id).first()
+    if not u: raise HTTPException(404,'User not found.')
+    u.exam_course=(p.get('exam_course') or u.exam_course or '').strip()
+    u.exam_date=(p.get('exam_date') or u.exam_date or '').strip()
+    u.target_score=int(p.get('target_score') or u.target_score or 80)
+    if p.get('preferred_style'):
+        u.preferred_style=p.get('preferred_style')
+    db.commit(); db.refresh(u); return user_payload(u)

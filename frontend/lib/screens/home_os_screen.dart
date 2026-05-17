@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/premium_card.dart';
 import '../theme/app_theme.dart';
-import 'voice/voice_tutor_screen.dart';
 import 'camera/camera_study_screen.dart';
-import 'study_room/study_room_screen.dart';
 import 'wellness/wellness_screen.dart';
-import 'school/school_mode_screen.dart';
 import 'exam_predictor/exam_predictor_screen.dart';
 import 'achievements/achievement_economy_screen.dart';
 import 'productivity/productivity_tools_screen.dart';
@@ -23,13 +20,13 @@ class _HomeOSScreenState extends State<HomeOSScreen> {
   final pages = const [
     _Dashboard(),
     ExamPredictorScreen(),
-    VoiceTutorScreen(),
+    _LegacyPlaceholder(title: 'Voice', subtitle: 'Open the main ExamAI Academic OS for voice and local language tutor mode.'),
     CameraStudyScreen(),
-    StudyRoomScreen(),
+    _LegacyPlaceholder(title: 'Rooms', subtitle: 'Open the main ExamAI Academic OS for live study rooms.'),
     WellnessScreen(),
     AchievementEconomyScreen(),
     ProductivityToolsScreen(),
-    SchoolModeScreen(),
+    _LegacyPlaceholder(title: 'School', subtitle: 'Open the main ExamAI Academic OS for curriculum-aware school mode.'),
   ];
 
   final labels = const ['Home','Exam AI','Voice','Camera','Rooms','Wellness','Rewards','Tools','School'];
@@ -108,4 +105,24 @@ class _MiniCard extends StatelessWidget {
       Text(subtitle),
     ])));
   }
+}
+
+class _LegacyPlaceholder extends StatelessWidget {
+  const _LegacyPlaceholder({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          PremiumCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(subtitle),
+            ]),
+          ),
+        ],
+      );
 }

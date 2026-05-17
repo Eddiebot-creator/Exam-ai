@@ -19,24 +19,53 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  final List<bool> done = [false, false, false, false];
+  List<bool> done = [];
   bool saving = false;
-  final tasks = const [('Recap yesterday’s topic', '20 min', Icons.menu_book_rounded), ('Answer 10 practice MCQs', '15 min', Icons.quiz_rounded), ('Review one weak topic', '25 min', Icons.psychology_rounded), ('Ask AI for one explanation', '10 min', Icons.smart_toy_rounded)];
+  List<String> get tasks => widget.data.missionTasks;
   int get completed => done.where((x) => x).length;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncTasks();
+  }
+
+  @override
+  void didUpdateWidget(covariant TasksScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncTasks();
+  }
+
+  void _syncTasks() {
+    if (done.length == tasks.length) return;
+    done = List<bool>.filled(tasks.length, false);
+  }
+
+  @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    const SectionIntro(icon: Icons.checklist_rounded, title: 'Today’s Plan', subtitle: 'Only four focused actions. Tap a task when you finish it and ExamAI saves your progress.', mascot: StudentMascot(size: 100, mood: MascotMood.focus)),
+    SectionIntro(icon: Icons.checklist_rounded, title: "Today's Plan", subtitle: widget.data.dailyMission['message']?.toString() ?? 'Your plan adapts from exam date, weak areas, quiz results, and review timing.', mascot: const StudentMascot(size: 100, mood: MascotMood.focus)),
     const SizedBox(height: 16),
     ResponsiveCalmGrid(minWidth: 260, children: [CalmMetric(title: 'Streak', value: '${widget.data.streak} days', subtitle: 'steady habit', icon: Icons.local_fire_department_rounded, color: CalmTheme.orange), CalmMetric(title: 'Level', value: '${widget.data.level}', subtitle: '${widget.data.xp + completed * 15} XP earned', icon: Icons.workspace_premium_rounded, color: CalmTheme.purple), CalmMetric(title: 'Today', value: '$completed / ${tasks.length}', subtitle: 'tasks completed', icon: Icons.check_circle_rounded, color: CalmTheme.green)]),
     const SizedBox(height: 16),
-    SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (var i = 0; i < tasks.length; i++) _TaskTile(number: i + 1, title: tasks[i].$1, duration: tasks[i].$2, icon: tasks[i].$3, done: done[i], onTap: () => _toggleTask(i)), const SizedBox(height: 8), PrimaryCalmButton(label: saving ? 'Saving progress...' : 'Save today’s progress', icon: Icons.cloud_done_rounded, onTap: saving ? null : _saveProgress)])),
+    SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (var i = 0; i < tasks.length; i++) _TaskTile(number: i + 1, title: tasks[i], duration: _duration(tasks[i]), icon: _iconFor(tasks[i]), done: done[i], onTap: () => _toggleTask(i)), const SizedBox(height: 8), PrimaryCalmButton(label: saving ? 'Saving progress...' : "Save today's progress", icon: Icons.cloud_done_rounded, onTap: saving ? null : _saveProgress)])),
     const SizedBox(height: 16),
-    SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Gamification, gently', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 8), const SoftText('XP, levels, streaks and badges motivate students without making the app noisy.'), const SizedBox(height: 14), Wrap(spacing: 10, runSpacing: 10, children: [CalmPill(icon: Icons.star_rounded, label: 'Quiz Master', onTap: () => showFeatureSheet(context, 'Quiz Master', 'Unlock by completing quizzes and improving your score.')), CalmPill(icon: Icons.local_fire_department_rounded, label: '7-day streak', onTap: () => showFeatureSheet(context, '7-day streak', 'Unlock by studying every day for one week.')), CalmPill(icon: Icons.auto_awesome_rounded, label: 'Focus Hero', onTap: () => showFeatureSheet(context, 'Focus Hero', 'Unlock by finishing daily plans consistently.'))])])),
+    SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Gamification, gently', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 8), const SoftText('XP, levels, streaks and badges motivate students without making the app noisy.'), const SizedBox(height: 14), Wrap(spacing: 10, runSpacing: 10, children: [CalmPill(icon: Icons.star_rounded, label: 'Quiz Master', onTap: () => showFeatureSheet(context, 'Quiz Master', 'Unlock by completing quizzes and improving your score.')), CalmPill(icon: Icons.local_fire_department_rounded, label: '7-day streak', onTap: () => showFeatureSheet(context, '7-day streak', 'Unlock by studying every day for one week.')), CalmPill(icon: Icons.auto_awesome_rounded, label: 'Focus Hero', onTap: () => showFeatureSheet(context, 'Focus Hero', 'Unlock by finishing daily plans consistently.'))])]))
   ]);
 
   void _toggleTask(int index) { setState(() => done[index] = !done[index]); toast(context, done[index] ? 'Task completed. Nice work.' : 'Task marked incomplete.'); }
-  Future<void> _saveProgress() async { setState(() => saving = true); try { final seconds = completed * 15 * 60; await widget.api.recordStudyTime(widget.userId, null, 'daily-plan:$completed/${tasks.length}', seconds); widget.onChanged(); if (mounted) showFeatureSheet(context, 'Progress saved', 'Your completed tasks, study time, streak, and XP have been saved.'); } catch (e) { if (mounted) toast(context, 'Could not save progress: ${e.toString().replaceFirst('Exception: ', '')}'); } finally { if (mounted) setState(() => saving = false); } }
+  String _duration(String task) {
+    final match = RegExp(r'(\d+)\s*min').firstMatch(task.toLowerCase());
+    return match == null ? '15 min' : '${match.group(1)} min';
+  }
+  IconData _iconFor(String task) {
+    final lower = task.toLowerCase();
+    if (lower.contains('quiz') || lower.contains('question') || lower.contains('mcq')) return Icons.quiz_rounded;
+    if (lower.contains('flashcard') || lower.contains('review')) return Icons.style_rounded;
+    if (lower.contains('ai') || lower.contains('explain')) return Icons.smart_toy_rounded;
+    if (lower.contains('timed') || lower.contains('drill')) return Icons.timer_rounded;
+    return Icons.menu_book_rounded;
+  }
+  Future<void> _saveProgress() async { setState(() => saving = true); try { final seconds = completed * 15 * 60; await widget.api.recordStudyTime(widget.userId, null, 'daily-plan:$completed/${tasks.length}:${widget.data.weakTopic}', seconds); await widget.api.learningEvent({'user_id': widget.userId, 'event_type': 'daily_plan', 'topic': widget.data.weakTopic, 'correct': completed == tasks.length, 'confidence': completed / tasks.length, 'difficulty': widget.data.dailyMission['difficulty'] ?? 'medium', 'seconds': seconds}); widget.onChanged(); if (mounted) showFeatureSheet(context, 'Progress saved', 'Your completed tasks, study time, streak, XP, readiness, and next review have been saved.'); } catch (e) { if (mounted) toast(context, 'Could not save progress: ${e.toString().replaceFirst('Exception: ', '')}'); } finally { if (mounted) setState(() => saving = false); } }
 }
 
 class _TaskTile extends StatelessWidget {
