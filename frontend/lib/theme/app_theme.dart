@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const teal = Color(0xff0f9f95);
@@ -13,13 +12,13 @@ class AppTheme {
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(seedColor: AppColors.teal, brightness: Brightness.light),
     scaffoldBackgroundColor: const Color(0xfff7fbfa),
-    textTheme: GoogleFonts.interTextTheme(),
+    fontFamily: 'Arial',
   );
 
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(seedColor: AppColors.teal, brightness: Brightness.dark),
     scaffoldBackgroundColor: const Color(0xff07111d),
-    textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+    fontFamily: 'Arial',
   );
 }

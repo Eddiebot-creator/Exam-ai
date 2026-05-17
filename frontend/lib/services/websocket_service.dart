@@ -1,19 +1,32 @@
+import 'dart:async';
 import 'dart:convert';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:io';
 
 class WebSocketService {
-  WebSocketChannel? _channel;
+  WebSocket? _socket;
+  final _controller = StreamController<dynamic>.broadcast();
 
   Stream<dynamic> connect(String url) {
-    _channel = WebSocketChannel.connect(Uri.parse(url));
-    return _channel!.stream.map((event) => jsonDecode(event as String));
+    WebSocket.connect(url).then((socket) {
+      _socket = socket;
+      socket.listen(
+        (event) => _controller.add(jsonDecode(event as String)),
+        onError: _controller.addError,
+        onDone: () => _socket = null,
+      );
+    }).catchError((Object error, StackTrace stackTrace) {
+      _controller.addError(error, stackTrace);
+      return null;
+    });
+    return _controller.stream;
   }
 
   void send(Map<String, dynamic> data) {
-    _channel?.sink.add(jsonEncode(data));
+    _socket?.add(jsonEncode(data));
   }
 
   void close() {
-    _channel?.sink.close();
+    _socket?.close();
+    _controller.close();
   }
 }

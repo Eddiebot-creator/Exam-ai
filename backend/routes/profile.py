@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter,Depends,HTTPException,UploadFile,File
 from sqlalchemy.orm import Session
-from database import get_db,User,Note,QuizAttempt,ProgressEvent,StudyMemory,LearningEvent,ConceptMastery,AdaptiveState
+from database import get_db,User,Note,QuizAttempt,ProgressEvent,StudyMemory,LearningEvent,ConceptMastery,AdaptiveState,Flashcard,Mcq,ChatMessage,Achievement,WellnessCheck,StudyRoom
 from security import verify_password,hash_password
 from routes.auth import user_payload
 import os
@@ -42,3 +42,14 @@ def export_data(user_id:int,db:Session=Depends(get_db)):
         'adaptive_state': {'readiness': state.readiness, 'tone': state.emotional_tone, 'next_best_action': state.next_best_action, 'exam_risk': state.exam_risk} if state else {},
         'privacy': 'Student-controlled export. Parent and lecturer sharing should require explicit consent.',
     }
+
+@router.delete('/{user_id}/data')
+def delete_student_data(user_id:int,db:Session=Depends(get_db)):
+    u=db.query(User).filter_by(id=user_id).first()
+    if not u: raise HTTPException(404,'User not found.')
+    for model in [Note,Flashcard,Mcq,QuizAttempt,ProgressEvent,ChatMessage,StudyMemory,Achievement,StudyRoom,WellnessCheck,LearningEvent,ConceptMastery,AdaptiveState]:
+        db.query(model).filter_by(user_id=user_id).delete(synchronize_session=False) if hasattr(model,'user_id') else None
+    db.query(StudyRoom).filter_by(owner_id=user_id).delete(synchronize_session=False)
+    u.xp=0; u.level=1; u.streak_days=0
+    db.commit()
+    return {'ok': True, 'message': 'Student learning data deleted. Account login remains active.'}

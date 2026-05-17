@@ -178,6 +178,17 @@ Future<Map<String, dynamic>> classInsights(String courseCode) {
   return getJson('/institution/class-insights/$courseCode');
 }
 
+Future<Map<String, dynamic>> exportMyData(int userId) {
+  return getJson('/profile/$userId/export');
+}
+
+Future<Map<String, dynamic>> deleteMyLearningData(int userId) async {
+  final response = await http
+      .delete(Uri.parse('$baseUrl/profile/$userId/data'))
+      .timeout(const Duration(seconds: 35));
+  return _map(response);
+}
+
   Map<String, dynamic> _map(http.Response response) {
     final body = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode >= 400) throw Exception(body['detail']?.toString() ?? 'Request failed (${response.statusCode}).');

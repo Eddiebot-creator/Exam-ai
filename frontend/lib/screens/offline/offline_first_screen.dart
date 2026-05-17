@@ -50,7 +50,7 @@ class _OfflineFirstScreenState extends State<OfflineFirstScreen> {
         SoftCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text('Sync queue', style: Theme.of(context).textTheme.titleLarge)),
-            SecondaryCalmButton(label: 'Add test action', icon: Icons.playlist_add_rounded, onTap: _queueTest),
+            SecondaryCalmButton(label: 'Save offline snapshot', icon: Icons.playlist_add_rounded, onTap: _queueSnapshot),
             const SizedBox(width: 8),
             PrimaryCalmButton(label: 'Sync now', icon: Icons.cloud_sync_rounded, compact: true, onTap: _sync),
           ]),
@@ -59,8 +59,8 @@ class _OfflineFirstScreenState extends State<OfflineFirstScreen> {
         ])),
       ]);
 
-  Future<void> _queueTest() async {
-    await widget.api.queueOfflineAction(widget.userId, 'offline_quiz_answer', {'source': 'offline-first-screen'});
+  Future<void> _queueSnapshot() async {
+    await widget.api.queueOfflineAction(widget.userId, 'offline_study_snapshot', {'saved_at': DateTime.now().toIso8601String(), 'reason': 'student_requested_backup'});
     await _load();
   }
 

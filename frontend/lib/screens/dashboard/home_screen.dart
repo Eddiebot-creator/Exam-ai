@@ -233,7 +233,7 @@ class _StatusTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(color: muted(context), fontWeight: FontWeight.w800, fontSize: 12)),
+                  Text(label, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w800, fontSize: 12)),
                   const SizedBox(height: 3),
                   Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
                 ],

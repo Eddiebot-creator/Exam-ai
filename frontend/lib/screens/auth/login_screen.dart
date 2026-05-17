@@ -19,9 +19,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final name = TextEditingController(text: 'Demo Student');
-  final email = TextEditingController(text: 'student@example.com');
-  final password = TextEditingController(text: 'password123');
+  final name = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
   final apiText = TextEditingController();
   bool signup = false;
   bool showApi = false;
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     TextField(controller: password, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline_rounded))), const SizedBox(height: 18),
     PrimaryCalmButton(label: busy ? 'Working...' : signup ? 'Create account' : 'Login', icon: signup ? Icons.person_add_rounded : Icons.login_rounded, onTap: busy ? null : _submit),
     const SizedBox(height: 12), TextButton(onPressed: busy ? null : () => setState(() => signup = !signup), child: Text(signup ? 'I already have an account' : 'Create a new account')),
-    Center(child: Text('Demo: student@example.com / password123', style: TextStyle(color: muted(context), fontWeight: FontWeight.w700, fontSize: 12))),
+    Center(child: Text('Your study data stays under your control.', style: TextStyle(color: muted(context), fontWeight: FontWeight.w700, fontSize: 12))),
   ]));
 
   String _apiBase() { var value = apiText.text.trim().isEmpty ? widget.initialApi.baseUrl : apiText.text.trim(); if (!value.startsWith('http')) value = 'https://$value'; if (value.endsWith('/')) value = value.substring(0, value.length - 1); return value; }

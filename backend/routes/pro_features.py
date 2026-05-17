@@ -1,7 +1,7 @@
+from __future__ import annotations
+
 import json
 from datetime import date, timedelta
-
-from __future__ import annotations
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -113,8 +113,8 @@ def leaderboard():
     data = [dict(row) for row in rows]
     if not data:
         data = [
-            {"full_name": "Demo Student", "study_seconds": 5400, "streak_days": 7},
-            {"full_name": "Quiz Master", "study_seconds": 4200, "streak_days": 5},
+            {"full_name": "Study Partner", "study_seconds": 0, "streak_days": 0},
+            {"full_name": "New Classmate", "study_seconds": 0, "streak_days": 0},
         ]
     return data
 

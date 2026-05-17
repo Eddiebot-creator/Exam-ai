@@ -4,7 +4,7 @@ LIVE AI CONNECTION FIX FOR EXAMAI
 WHY THE APP SHOWS:
 "Let us solve it calmly..."
 
-The frontend is still using a fallback/demo response instead of the live backend AI route.
+The frontend should use the live backend AI route in production. Keep fallback responses only for explicit offline recovery.
 
 --------------------------------------------------
 STEP 1 — FIND YOUR RENDER BACKEND URL

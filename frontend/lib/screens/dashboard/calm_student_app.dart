@@ -16,6 +16,7 @@ import '../school/school_mode_screen.dart';
 import '../study_room/study_room_screen.dart';
 import '../tasks/tasks_screen.dart';
 import '../tools/tools_screen.dart';
+import '../trust/trust_data_screen.dart';
 import '../tutor/tutor_screen.dart';
 import '../voice/voice_tutor_screen.dart';
 import 'home_screen.dart';
@@ -59,6 +60,7 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
     AppTab('Lecturer', Icons.co_present_rounded),
     AppTab('Voice', Icons.record_voice_over_rounded),
     AppTab('Diagnostics', Icons.psychology_alt_rounded),
+    AppTab('Your Data', Icons.privacy_tip_rounded),
     AppTab('OS Hub', Icons.apps_rounded),
     AppTab('Profile', Icons.person_rounded),
   ];
@@ -137,7 +139,8 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
             9 => LecturerToolsScreen(api: widget.api, userName: widget.user['full_name']?.toString() ?? 'Lecturer', course: data.missionCourse),
             10 => VoiceTutorScreen(focusTopic: data.weakTopic),
             11 => DeepDiagnosticsScreen(data: data),
-            12 => ToolsScreen(data: data, goRooms: () => setState(() => index = 6), goOffline: () => setState(() => index = 7), goSchool: () => setState(() => index = 8), goLecturer: () => setState(() => index = 9), goVoice: () => setState(() => index = 10), goDiagnostics: () => setState(() => index = 11)),
+            12 => TrustDataScreen(api: widget.api, userId: userId, onChanged: refresh),
+            13 => ToolsScreen(data: data, goRooms: () => setState(() => index = 6), goOffline: () => setState(() => index = 7), goSchool: () => setState(() => index = 8), goLecturer: () => setState(() => index = 9), goVoice: () => setState(() => index = 10), goDiagnostics: () => setState(() => index = 11)),
             _ => ProfileScreen(user: widget.user, apiBase: widget.api.baseUrl, onLogout: widget.onLogout, onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode, api: widget.api, userId: userId, onUserChanged: widget.onUserChanged),
           },
         ),

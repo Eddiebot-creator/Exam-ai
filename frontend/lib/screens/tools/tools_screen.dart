@@ -44,6 +44,7 @@ class ToolsScreen extends StatelessWidget {
           _PillarCard(title: 'Curriculum aware', body: 'WAEC, JAMB, Nigerian universities, GCSE, SAT, AP, IB, and lecturer course packs.', icon: Icons.account_balance_rounded, color: CalmTheme.indigo, onTap: goSchool),
           _PillarCard(title: 'Lecturer tools', body: 'Course codes, generated materials, assignments, and anonymized class insight.', icon: Icons.co_present_rounded, color: CalmTheme.blue, onTap: goLecturer),
           _PillarCard(title: 'Voice and languages', body: 'Ask aloud in English, Pidgin, Yoruba, Igbo, Hausa, French, or Swahili.', icon: Icons.record_voice_over_rounded, color: CalmTheme.rose, onTap: goVoice),
+          _PillarCard(title: 'Widget and smart reminders', body: 'One useful daily prompt, streak/task snapshot, and one-tap study entry for the phone home screen.', icon: Icons.widgets_rounded, color: CalmTheme.gold, onTap: () => showFeatureSheet(context, 'Widget and reminders', 'Native Android widget and push delivery require platform setup. The UX target is: one task count, streak, exam countdown, and one useful reminder at the student usual study time.')),
           _PillarCard(title: 'Trust and privacy', body: 'Consent-first reports, transparent AI, export/delete controls, and school-safe analytics.', icon: Icons.privacy_tip_rounded, color: CalmTheme.graphite, onTap: () => showFeatureSheet(context, 'Trust layer', 'Production readiness needs encrypted secrets, consent logs, data export/delete, school audit logs, and clear AI transparency controls.')),
         ]),
       ]);

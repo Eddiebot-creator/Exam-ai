@@ -155,7 +155,7 @@ class _StudentOSScreenState extends State<StudentOSScreen> {
           _FeatureCard(
             title: '6. Exam Prediction Engine',
             body: 'Predict likely topics, pass probability, urgent weak areas, and readiness.',
-            icon: Icons.crystal_ball_rounded,
+            icon: Icons.query_stats_rounded,
             color: CalmTheme.indigo,
             action: 'View prediction',
             onTap: () => showFeatureSheet(context, 'Exam Prediction', '${widget.data.missionCourse}: likely focus area is ${widget.data.weakTopic}. Current readiness: ${widget.data.average}%. Recommended action: 10 MCQs + one AI explanation.'),

@@ -86,9 +86,9 @@ def save_preferences(user_id: int, payload: PreferenceRequest):
 @router.post("/payment/create-checkout")
 def create_checkout(payload: PaymentRequest):
     return {
-        "status": "demo",
-        "message": "Connect Stripe, Paystack, or Flutterwave here for live payments.",
-        "checkout_url": f"https://example.com/checkout?user_id={payload.user_id}&plan={payload.plan}",
+        "status": "payment_provider_not_configured",
+        "message": "Connect Stripe, Paystack, or Flutterwave before enabling live checkout.",
+        "checkout_url": "",
     }
 
 
@@ -126,4 +126,3 @@ def _get_note(note_id: int):
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
     return note
-
