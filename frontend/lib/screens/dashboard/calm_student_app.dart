@@ -125,7 +125,12 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
         onRefresh: refresh,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(22, 12, 22, 90),
+          padding: EdgeInsets.fromLTRB(
+            MediaQuery.sizeOf(context).width < 430 ? 12 : 22,
+            10,
+            MediaQuery.sizeOf(context).width < 430 ? 12 : 22,
+            90,
+          ),
           child: switch (index) {
             0 => HomeScreen(firstName: firstName, data: data, loading: loading, goTutor: () => setState(() => index = 1), goTasks: () => setState(() => index = 2), goLibrary: () => setState(() => index = 3), goFocus: () => setState(() => index = 4)),
             1 => TutorScreen(api: widget.api, userId: userId, notes: notes, onVoice: () => setState(() => index = 10)),

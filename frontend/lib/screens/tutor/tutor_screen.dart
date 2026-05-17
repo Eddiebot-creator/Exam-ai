@@ -49,10 +49,9 @@ class _TutorScreenState extends State<TutorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final chatHeight = min<double>(
-      660,
-      MediaQuery.sizeOf(context).height - 190,
-    );
+    final screen = MediaQuery.sizeOf(context);
+    final mobile = screen.width < 430;
+    final chatHeight = mobile ? max<double>(520, screen.height * .70) : min<double>(660, screen.height - 190);
 
     return Column(
       children: [
@@ -71,7 +70,7 @@ class _TutorScreenState extends State<TutorScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 430 ? 14 : 16),
                   child: Row(
                     children: [
                       const CircleIcon(
@@ -241,7 +240,7 @@ class TutorBubble extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxWidth: 760),
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width < 430 ? MediaQuery.sizeOf(context).width * .82 : 760),
           decoration: BoxDecoration(
             color: message.me ? CalmTheme.teal : cardColor(context),
             borderRadius: BorderRadius.only(
@@ -323,40 +322,44 @@ class TutorComposer extends StatelessWidget {
   final VoidCallback onSend;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        color: Theme.of(context).colorScheme.surface.withOpacity(.72),
-        child: Row(
-          children: [
-            Tooltip(
-              message: 'Attach image',
-              child: IconButton.filledTonal(onPressed: sending ? null : onAttach, icon: const Icon(Icons.attach_file_rounded)),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                decoration: BoxDecoration(boxShadow: sending ? [] : softShadow(context)),
-                child: TextField(
-                  controller: input,
-                  minLines: 1,
-                  maxLines: 4,
-                  onSubmitted: (_) {
-                    if (!sending) onSend();
-                  },
-                  decoration: const InputDecoration(hintText: 'Ask about your exam, weak topic, or uploaded note...'),
-                ),
+  Widget build(BuildContext context) {
+    final mobile = MediaQuery.sizeOf(context).width < 430;
+    return Container(
+      padding: EdgeInsets.all(mobile ? 10 : 14),
+      color: Theme.of(context).colorScheme.surface.withOpacity(.72),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Tooltip(
+            message: 'Attach image',
+            child: IconButton.filledTonal(onPressed: sending ? null : onAttach, icon: const Icon(Icons.attach_file_rounded)),
+          ),
+          SizedBox(width: mobile ? 6 : 8),
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              decoration: BoxDecoration(boxShadow: sending ? [] : softShadow(context)),
+              child: TextField(
+                controller: input,
+                minLines: 1,
+                maxLines: mobile ? 3 : 4,
+                onSubmitted: (_) {
+                  if (!sending) onSend();
+                },
+                decoration: const InputDecoration(hintText: 'Ask your tutor...'),
               ),
             ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              tooltip: 'Send',
-              onPressed: sending ? null : onSend,
-              child: sending
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.arrow_upward_rounded),
-            ),
-          ],
-        ),
-      );
+          ),
+          SizedBox(width: mobile ? 6 : 8),
+          FloatingActionButton.small(
+            tooltip: 'Send',
+            onPressed: sending ? null : onSend,
+            child: sending
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.arrow_upward_rounded),
+          ),
+        ],
+      ),
+    );
+  }
 }

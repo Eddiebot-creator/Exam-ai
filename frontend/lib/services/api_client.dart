@@ -3,8 +3,18 @@ import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  ApiClient(this.baseUrl);
+  ApiClient(String baseUrl) : baseUrl = _normalizeBaseUrl(baseUrl);
   final String baseUrl;
+
+  static String _normalizeBaseUrl(String value) {
+    var next = value.trim();
+    if (next.isEmpty) next = 'https://exam-ai-113m.onrender.com';
+    if (!next.startsWith('http')) next = 'https://$next';
+    while (next.endsWith('/')) {
+      next = next.substring(0, next.length - 1);
+    }
+    return next;
+  }
 
   Future<bool> ping() async {
     try {
@@ -202,7 +212,11 @@ Future<Map<String, dynamic>> deleteMyLearningData(int userId) async {
   }
 
   List<dynamic> _list(http.Response response) {
-    if (response.statusCode >= 400) throw Exception('Request failed (${response.statusCode}).');
-    return response.body.isEmpty ? [] : jsonDecode(response.body) as List<dynamic>;
+    if (response.statusCode >= 400) throw Exception('Request failed (${response.statusCode}): ${response.body}');
+    try {
+      return response.body.isEmpty ? [] : jsonDecode(response.body) as List<dynamic>;
+    } catch (_) {
+      throw Exception('Server returned invalid list response (${response.statusCode}): ${response.body}');
+    }
   }
 }

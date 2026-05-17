@@ -35,6 +35,7 @@ class HomeScreen extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 720;
+              final mobile = constraints.maxWidth < 430;
               final headline = 'Today, focus on ${data.weakTopic}';
               final subtitle =
                   'Hi $firstName. ${data.missionCourse} is in ${data.daysLeft} days, you are ${data.average}% ready, and your next best action is: ${data.nextBestAction}.';
@@ -44,8 +45,8 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Text(
                     headline,
-                    style: const TextStyle(
-                      fontSize: 34,
+                    style: TextStyle(
+                      fontSize: mobile ? 30 : 34,
                       fontWeight: FontWeight.w900,
                       height: 1.05,
                     ),
@@ -109,8 +110,8 @@ class HomeScreen extends StatelessWidget {
                 ],
               );
 
-              const mascot = StudentMascot(
-                size: 150,
+              final mascot = StudentMascot(
+                size: mobile ? 122 : 150,
                 mood: MascotMood.celebrate,
               );
 
@@ -136,7 +137,7 @@ class HomeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ResponsiveCalmGrid(
-          minWidth: 320,
+          minWidth: 280,
           children: [
             StudyBrainCard(onStart: goTutor),
             DailyFlowCard(onStart: goTasks),
