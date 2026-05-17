@@ -17,11 +17,13 @@ class TutorScreen extends StatefulWidget {
     required this.api,
     required this.userId,
     required this.notes,
+    required this.onVoice,
   });
 
   final ApiClient api;
   final int userId;
   final List<dynamic> notes;
+  final VoidCallback onVoice;
 
   @override
   State<TutorScreen> createState() => _TutorScreenState();
@@ -85,11 +87,8 @@ class _TutorScreenState extends State<TutorScreen> {
                       ),
                       CalmPill(
                         icon: Icons.mic_rounded,
-                        label: 'Voice ready',
-                        onTap: () => toast(
-                          context,
-                          'Voice tutor button is active.',
-                        ),
+                        label: 'Voice mode',
+                        onTap: widget.onVoice,
                       ),
                     ],
                   ),
@@ -124,53 +123,17 @@ class _TutorScreenState extends State<TutorScreen> {
                 ),
                 Expanded(
                   child: ListView.builder(
+                    reverse: false,
                     padding: const EdgeInsets.all(16),
                     itemCount: messages.length + (sending ? 1 : 0),
                     itemBuilder: (context, i) {
                       if (i == messages.length) return const TypingBubble();
-                      return TutorBubble(message: messages[i]);
+                      return AnimatedTutorBubble(message: messages[i], index: i);
                     },
                   ),
                 ),
                 Divider(height: 1, color: dividerColor(context)),
-                Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      IconButton.filledTonal(
-                        onPressed: sending ? null : _pickImage,
-                        icon: const Icon(Icons.attach_file_rounded),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: input,
-                          minLines: 1,
-                          maxLines: 4,
-                          onSubmitted: (_) {
-                            if (!sending) _send();
-                          },
-                          decoration: const InputDecoration(
-                            hintText: 'Ask one question...',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      FloatingActionButton.small(
-                        onPressed: sending ? null : _send,
-                        child: sending
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.arrow_upward_rounded),
-                      ),
-                    ],
-                  ),
-                ),
+                TutorComposer(input: input, sending: sending, onAttach: _pickImage, onSend: _send),
               ],
             ),
           ),
@@ -194,7 +157,7 @@ class _TutorScreenState extends State<TutorScreen> {
         () => messages.add(
           TutorMessage(
             true,
-            'Uploaded image: ${result.files.single.name}. Please explain this image when OCR/image AI is connected.',
+            'Attached image: ${result.files.single.name}. I will use it as study context when image extraction is available for this device.',
           ),
         ),
       );
@@ -235,7 +198,7 @@ class _TutorScreenState extends State<TutorScreen> {
         messages.add(
           TutorMessage(
             false,
-            'Backend connection error: $e',
+            'I could not reach the tutor cleanly. ${e.toString().replaceFirst('Exception: ', '')}\n\nTry again in a moment, or ask a shorter question.',
           ),
         );
       });
@@ -247,34 +210,59 @@ class _TutorScreenState extends State<TutorScreen> {
   }
 }
 
+class AnimatedTutorBubble extends StatelessWidget {
+  const AnimatedTutorBubble({super.key, required this.message, required this.index});
+
+  final TutorMessage message;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        key: ValueKey('$index-${message.text.hashCode}'),
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) => Opacity(
+          opacity: value,
+          child: Transform.translate(offset: Offset(message.me ? 18 * (1 - value) : -18 * (1 - value), 8 * (1 - value)), child: child),
+        ),
+        child: TutorBubble(message: message),
+      );
+}
+
 class TutorBubble extends StatelessWidget {
   const TutorBubble({super.key, required this.message});
 
   final TutorMessage message;
 
   @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: message.me ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        constraints: const BoxConstraints(maxWidth: 680),
-        decoration: BoxDecoration(
-          color: message.me ? CalmTheme.teal : cardColor(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: dividerColor(context)),
-        ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            height: 1.45,
-            color: message.me ? Colors.white : null,
+  Widget build(BuildContext context) => Align(
+        alignment: message.me ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          constraints: const BoxConstraints(maxWidth: 760),
+          decoration: BoxDecoration(
+            color: message.me ? CalmTheme.teal : cardColor(context),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(8),
+              topRight: const Radius.circular(8),
+              bottomLeft: Radius.circular(message.me ? 8 : 2),
+              bottomRight: Radius.circular(message.me ? 2 : 8),
+            ),
+            border: Border.all(color: message.me ? CalmTheme.teal : dividerColor(context)),
+            boxShadow: softShadow(context),
+          ),
+          child: SelectableText(
+            message.text,
+            style: TextStyle(
+              height: 1.5,
+              fontSize: 15,
+              color: message.me ? Colors.white : null,
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class TypingBubble extends StatelessWidget {
@@ -287,13 +275,88 @@ class TypingBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: cardColor(context),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: dividerColor(context)),
-        ),
-        child: const Text('AI is thinking...'),
+        decoration: BoxDecoration(color: cardColor(context), borderRadius: BorderRadius.circular(8), border: Border.all(color: dividerColor(context))),
+        child: const _TypingDots(),
       ),
     );
   }
+}
+
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+  }
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) => Row(mainAxisSize: MainAxisSize.min, children: [
+          for (var i = 0; i < 3; i++)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 7,
+              height: 7 + (controller.value * 6 - i * 2).clamp(0, 4),
+              decoration: BoxDecoration(color: CalmTheme.teal.withOpacity(.35 + .45 * ((controller.value + i / 3) % 1)), borderRadius: BorderRadius.circular(7)),
+            ),
+        ]),
+      );
+}
+
+class TutorComposer extends StatelessWidget {
+  const TutorComposer({super.key, required this.input, required this.sending, required this.onAttach, required this.onSend});
+  final TextEditingController input;
+  final bool sending;
+  final VoidCallback onAttach;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        color: Theme.of(context).colorScheme.surface.withOpacity(.72),
+        child: Row(
+          children: [
+            Tooltip(
+              message: 'Attach image',
+              child: IconButton.filledTonal(onPressed: sending ? null : onAttach, icon: const Icon(Icons.attach_file_rounded)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                decoration: BoxDecoration(boxShadow: sending ? [] : softShadow(context)),
+                child: TextField(
+                  controller: input,
+                  minLines: 1,
+                  maxLines: 4,
+                  onSubmitted: (_) {
+                    if (!sending) onSend();
+                  },
+                  decoration: const InputDecoration(hintText: 'Ask about your exam, weak topic, or uploaded note...'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FloatingActionButton.small(
+              tooltip: 'Send',
+              onPressed: sending ? null : onSend,
+              child: sending
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.arrow_upward_rounded),
+            ),
+          ],
+        ),
+      );
 }

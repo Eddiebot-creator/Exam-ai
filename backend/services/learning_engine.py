@@ -8,7 +8,7 @@ def extract_text(filename, content=None, fallback=''):
     if content:
         try: return content.decode('utf-8',errors='ignore')[:50000]
         except Exception: pass
-    return f'Extracted text placeholder from {filename}. Connect OCR/PDF parser for full production extraction.'
+    return f'{filename} was saved. Add readable text, PDF text, or an OCR provider to extract full study content automatically.'
 def detect_topics(text):
     words=re.findall(r'[A-Za-z]{5,}',text.lower()); counts=Counter(w for w in words if w not in STOP); return [w.title() for w,_ in counts.most_common(8)] or ['General']
 def make_summary(text):

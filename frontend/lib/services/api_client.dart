@@ -190,8 +190,14 @@ Future<Map<String, dynamic>> deleteMyLearningData(int userId) async {
 }
 
   Map<String, dynamic> _map(http.Response response) {
-    final body = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
-    if (response.statusCode >= 400) throw Exception(body['detail']?.toString() ?? 'Request failed (${response.statusCode}).');
+    Map<String, dynamic> body;
+    try {
+      body = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      final text = response.body.trim().isEmpty ? 'No response body.' : response.body.trim();
+      throw Exception('Server returned a non-JSON response (${response.statusCode}): $text');
+    }
+    if (response.statusCode >= 400) throw Exception(body['detail']?.toString() ?? body['error']?.toString() ?? 'Request failed (${response.statusCode}).');
     return body;
   }
 

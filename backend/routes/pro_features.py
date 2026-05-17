@@ -62,7 +62,7 @@ def ai_tutor_pro(payload: TutorProRequest):
         "mode": payload.mode,
         "answer": answer,
         "voice_script": answer[:900],
-        "image_upload_status": "ready_for_ocr_pipeline",
+        "image_upload_status": "image_received_ocr_provider_not_configured",
         "note_context_used": bool(context),
     }
 

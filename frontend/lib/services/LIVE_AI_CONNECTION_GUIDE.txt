@@ -89,7 +89,7 @@ flutter build windows --release
 WHAT THIS FIXES
 --------------------------------------------------
 
-- removes placeholder tutor mode
+- removes local-only tutor mode
 - enables real AI responses
 - connects Flutter -> Render backend
 - enables live adaptive tutor answers

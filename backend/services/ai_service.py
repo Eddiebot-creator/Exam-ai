@@ -4,9 +4,6 @@ import json
 import os
 import re
 
-from openai import OpenAI
-
-
 SUMMARY_PROMPTS = {
     "short": "Create a short, sharp study summary in 6-8 bullets.",
     "detailed": "Create a detailed study guide with headings, definitions, examples, and exam reminders.",
@@ -20,6 +17,7 @@ SUMMARY_PROMPTS = {
 def summarize_text(text: str, mode: str = "short") -> str:
     prompt = SUMMARY_PROMPTS.get(mode, SUMMARY_PROMPTS["short"])
     if os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
         client = OpenAI()
         response = client.responses.create(
             model="gpt-4.1-mini",
@@ -52,6 +50,7 @@ def summarize_text(text: str, mode: str = "short") -> str:
 
 def generate_mcqs(text: str, count: int = 8, difficulty: str = "medium", mode: str = "practice") -> list[dict[str, object]]:
     if os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
         client = OpenAI()
         response = client.responses.create(
             model="gpt-4.1-mini",
@@ -112,6 +111,7 @@ def generate_flashcards(text: str, count: int = 10) -> list[dict[str, str]]:
 
 def chat_with_note(text: str, message: str) -> str:
     if os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
         client = OpenAI()
         response = client.responses.create(
             model="gpt-4.1-mini",
@@ -151,6 +151,7 @@ def analyze_topics(text: str, answers: dict[int, str] | None = None) -> dict[str
 def predict_exam(text: str) -> dict[str, list[str]]:
     terms = extract_terms(text)
     if os.getenv("OPENAI_API_KEY"):
+        from openai import OpenAI
         client = OpenAI()
         response = client.responses.create(
             model="gpt-4.1-mini",
