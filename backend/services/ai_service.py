@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import google.generativeai as genai
 import re
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+
 
 SUMMARY_PROMPTS = {
     "short": "Create a short, sharp study summary in 6-8 bullets.",
@@ -16,6 +23,17 @@ SUMMARY_PROMPTS = {
 
 def summarize_text(text: str, mode: str = "short") -> str:
     prompt = SUMMARY_PROMPTS.get(mode, SUMMARY_PROMPTS["short"])
+        if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(
+                f"{prompt}\n\n{text[:18000]}"
+            )
+            if response and response.text:
+                return response.text.strip()
+        except Exception as e:
+            print("Gemini summary failed:", e)
+
     if os.getenv("OPENAI_API_KEY"):
         from openai import OpenAI
         client = OpenAI()
@@ -49,6 +67,26 @@ def summarize_text(text: str, mode: str = "short") -> str:
 
 
 def generate_mcqs(text: str, count: int = 8, difficulty: str = "medium", mode: str = "practice") -> list[dict[str, object]]:
+        if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(
+                f"""
+Return only valid JSON: an array of MCQ objects with keys:
+question, options, correct_answer, explanation.
+correct_answer must be A, B, C, or D.
+
+Generate {count} {difficulty} {mode} MCQs from this text:
+{text[:18000]}
+"""
+            )
+            if response and response.text:
+                cleaned = response.text.strip()
+                cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+                return json.loads(cleaned)
+        except Exception as e:
+            print("Gemini MCQ failed:", e)
+
     if os.getenv("OPENAI_API_KEY"):
         from openai import OpenAI
         client = OpenAI()
@@ -110,6 +148,25 @@ def generate_flashcards(text: str, count: int = 10) -> list[dict[str, str]]:
 
 
 def chat_with_note(text: str, message: str) -> str:
+        if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            response = model.generate_content(
+                f"""
+You are a friendly exam coach.
+
+NOTE:
+{text[:16000]}
+
+QUESTION:
+{message}
+"""
+            )
+            if response and response.text:
+                return response.text.strip()
+        except Exception as e:
+            print("Gemini chat failed:", e)
+
     if os.getenv("OPENAI_API_KEY"):
         from openai import OpenAI
         client = OpenAI()
