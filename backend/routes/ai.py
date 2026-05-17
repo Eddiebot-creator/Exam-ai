@@ -27,7 +27,24 @@ async def chat(p: dict, db: Session = Depends(get_db)):
             else db.query(Note).filter_by(user_id=user_id).order_by(Note.id.desc()).first()
         )
 
-        ctx = tutor_context(db, user_id, msg)
+        try:
+            ctx = tutor_context(db, user_id, msg)
+        except Exception as exc:
+            print("Tutor context failed:", exc)
+            db.rollback()
+            ctx = {
+                "system_prompt": "You are ExamAI, a patient exam-focused tutor. Give clear, practical help.",
+                "context": {
+                    "focus_topic": topic,
+                    "emotional_tone": "encouraging",
+                    "tutor_style": "simple",
+                    "next_best_action": "Review one concept, then answer one practice question.",
+                    "readiness": 50,
+                    "exam_risk": "normal",
+                    "weak_topics": [topic],
+                    "daily_mission": {"difficulty": "medium"},
+                },
+            }
         adaptive = ctx["context"]
         focus_topic = adaptive.get("focus_topic", topic)
         tone = adaptive.get("emotional_tone", "encouraging")
@@ -71,19 +88,28 @@ async def chat(p: dict, db: Session = Depends(get_db)):
         )
         final_answer = header + answer.strip() + f"\n\nNext best action: {next_action}"
 
-        db.add(ChatMessage(user_id=user_id, note_id=note.id if note else None, role="user", content=msg))
-        db.add(ChatMessage(user_id=user_id, note_id=note.id if note else None, role="assistant", content=final_answer))
+        try:
+            db.add(ChatMessage(user_id=user_id, note_id=note.id if note else None, role="user", content=msg))
+            db.add(ChatMessage(user_id=user_id, note_id=note.id if note else None, role="assistant", content=final_answer))
+            db.commit()
+        except Exception as exc:
+            print("Chat history save failed:", exc)
+            db.rollback()
 
-        process_learning_event(db, {
-            "user_id": user_id,
-            "event_type": "tutor_chat",
-            "topic": focus_topic,
-            "correct": True,
-            "confidence": 0.55,
-            "difficulty": "medium",
-            "seconds": 60,
-            "payload": {"message": msg, "source": "ai_chat"}
-        })
+        try:
+            process_learning_event(db, {
+                "user_id": user_id,
+                "event_type": "tutor_chat",
+                "topic": focus_topic,
+                "correct": True,
+                "confidence": 0.55,
+                "difficulty": "medium",
+                "seconds": 60,
+                "payload": {"message": msg, "source": "ai_chat"}
+            })
+        except Exception as exc:
+            print("Tutor adaptive save failed:", exc)
+            db.rollback()
 
         return {
             "answer": final_answer,

@@ -24,4 +24,31 @@ def deep_health():
     checks['database_driver']='postgresql+psycopg' if DATABASE_URL.startswith('postgresql+psycopg') else 'sqlite' if DATABASE_URL.startswith('sqlite') else 'other'
     healthy=checks['database']=='ok'
     return {'status':'ok' if healthy else 'degraded','checks':checks}
+@app.get('/health/schema')
+def schema_health():
+    required={
+        'notes':['id','user_id','title','extracted_text','summary'],
+        'flashcards':['id','user_id','note_id','topic','question','answer'],
+        'mcqs':['id','user_id','note_id','question','options','answer_index'],
+        'chat_messages':['id','user_id','role','content'],
+        'learning_events':['id','user_id','event_type','topic','payload'],
+        'concept_mastery':['id','user_id','topic','mastery'],
+        'adaptive_state':['id','user_id','readiness','daily_mission'],
+    }
+    result={}
+    ok=True
+    try:
+        with engine.connect() as conn:
+            for table, columns in required.items():
+                if DATABASE_URL.startswith('sqlite'):
+                    existing={row[1] for row in conn.exec_driver_sql(f'PRAGMA table_info({table})').fetchall()}
+                else:
+                    rows=conn.exec_driver_sql("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=%s",(table,)).fetchall()
+                    existing={row[0] for row in rows}
+                missing=[c for c in columns if c not in existing]
+                result[table]={'ok':not missing,'missing':missing}
+                ok=ok and not missing
+    except Exception as exc:
+        return {'status':'degraded','error':str(exc),'tables':result}
+    return {'status':'ok' if ok else 'degraded','tables':result}
 for r in [auth.router,profile.router,notes.router,flashcards.router,quiz.router,progress.router,ai.router,memory.router,wellness.router,exams.router,voice.router,camera.router,study_rooms.router,school.router,intelligence.router,offline_sync.router,social_study.router,autonomous.router,institution.router]: app.include_router(r)
