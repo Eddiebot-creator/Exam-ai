@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/api_client.dart';
+import '../../theme/calm_theme.dart';
 import '../../utils/ui_helpers.dart';
 import '../../widgets/buttons.dart';
 import '../../widgets/common_widgets.dart';
@@ -36,25 +37,43 @@ class _FocusModeScreenState extends State<FocusModeScreen> {
     return Column(children: [
       SectionIntro(icon: Icons.self_improvement_rounded, title: 'Focus Mode', subtitle: celebrated ? 'Focus complete. Your mascot noticed the win.' : 'One task. One calm timer. No distractions.', mascot: StudentMascot(size: 100, mood: celebrated ? MascotMood.celebrate : MascotMood.sleep)),
       const SizedBox(height: 16),
-      SoftCard(child: Column(children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 350),
-          transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
-          child: StudentMascot(key: ValueKey(celebrated), size: 160, mood: celebrated ? MascotMood.celebrate : MascotMood.focus),
+      Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: SoftCard(
+            padding: const EdgeInsets.all(26),
+            child: Column(children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: CalmTheme.teal.withOpacity(Theme.of(context).brightness == Brightness.dark ? .09 : .07),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: CalmTheme.teal.withOpacity(.16)),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                  child: StudentMascot(key: ValueKey(celebrated), size: 132, mood: celebrated ? MascotMood.celebrate : MascotMood.focus),
+                ),
+              ),
+              const SizedBox(height: 22),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 180),
+                style: TextStyle(fontSize: running ? 62 : 58, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface),
+                child: Text('$min:$sec'),
+              ),
+              const SoftText('Adaptive practice calm focus session'),
+              const SizedBox(height: 20),
+              Wrap(spacing: 10, runSpacing: 10, children: [
+                PrimaryCalmButton(label: running ? 'Pause' : 'Start Session', icon: running ? Icons.pause_rounded : Icons.play_arrow_rounded, onTap: _toggle),
+                SecondaryCalmButton(label: 'Reset', icon: Icons.restart_alt_rounded, onTap: _reset),
+              ]),
+            ]),
+          ),
         ),
-        const SizedBox(height: 16),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 180),
-          style: TextStyle(fontSize: running ? 60 : 56, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface),
-          child: Text('$min:$sec'),
-        ),
-        const SoftText('Adaptive practice calm focus session'),
-        const SizedBox(height: 20),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          PrimaryCalmButton(label: running ? 'Pause' : 'Start', icon: running ? Icons.pause_rounded : Icons.play_arrow_rounded, onTap: _toggle),
-          SecondaryCalmButton(label: 'Reset', icon: Icons.restart_alt_rounded, onTap: _reset),
-        ]),
-      ])),
+      ),
     ]);
   }
 

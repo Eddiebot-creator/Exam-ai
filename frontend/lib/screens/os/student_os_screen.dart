@@ -93,7 +93,7 @@ class _StudentOSScreenState extends State<StudentOSScreen> {
                   SoftText('You are ${widget.data.average}% ready for ${widget.data.missionCourse}. Complete one focused session, then retry weak questions.'),
                   const SizedBox(height: 16),
                   Wrap(spacing: 10, runSpacing: 10, children: [
-                    CalmPill(icon: Icons.psychology_rounded, label: 'AI memory active'),
+                    const CalmPill(icon: Icons.psychology_rounded, label: 'AI memory active'),
                     CalmPill(icon: Icons.health_and_safety_rounded, label: 'Burnout risk: $burnoutRisk'),
                     CalmPill(icon: Icons.monetization_on_rounded, label: '$rewardCoins coins'),
                   ]),

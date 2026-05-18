@@ -16,10 +16,14 @@ class CalmTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: compact ? 72 : 64,
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: dividerColor(context)))),
+      decoration: BoxDecoration(
+        color: dark ? CalmTheme.night.withOpacity(.72) : Colors.white.withOpacity(.38),
+        border: Border(bottom: BorderSide(color: dividerColor(context))),
+      ),
       child: Row(children: [
         if (compact) Image.asset(AppConfig.logo, width: 34, errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded)),
         if (compact) const SizedBox(width: 10),
@@ -43,9 +47,13 @@ class CalmSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(border: Border(right: BorderSide(color: dividerColor(context)))),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xff071310).withOpacity(.92) : Colors.white.withOpacity(.52),
+        border: Border(right: BorderSide(color: dividerColor(context))),
+      ),
       child: Column(children: [
         Row(children: [Image.asset(AppConfig.logo, width: 42, errorBuilder: (_, __, ___) => const Icon(Icons.school_rounded)), const SizedBox(width: 10), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('ExamAI', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), Text('Academic OS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: CalmTheme.teal))]))]),
         const SizedBox(height: 22),
@@ -71,7 +79,10 @@ class _SideButton extends StatefulWidget {
 class _SideButtonState extends State<_SideButton> {
   bool hover = false;
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark ? CalmTheme.glowTeal : CalmTheme.teal;
+    return Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: MouseRegion(
       onEnter: (_) => setState(() => hover = true),
@@ -82,10 +93,11 @@ class _SideButtonState extends State<_SideButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(color: widget.selected ? CalmTheme.teal.withOpacity(.14) : hover ? CalmTheme.teal.withOpacity(.06) : Colors.transparent, borderRadius: BorderRadius.circular(8), border: Border.all(color: widget.selected ? CalmTheme.teal.withOpacity(.24) : Colors.transparent)),
-          child: Row(children: [AnimatedContainer(duration: const Duration(milliseconds: 180), width: 4, height: widget.selected ? 28 : 8, decoration: BoxDecoration(color: widget.selected ? CalmTheme.teal : Colors.transparent, borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Icon(widget.tab.icon, color: widget.selected ? CalmTheme.teal : muted(context)), const SizedBox(width: 12), Expanded(child: Text(widget.tab.label, style: TextStyle(fontWeight: widget.selected ? FontWeight.w900 : FontWeight.w700, color: widget.selected ? CalmTheme.teal : null)))])
+          decoration: BoxDecoration(color: widget.selected ? accent.withOpacity(.15) : hover ? accent.withOpacity(.07) : Colors.transparent, borderRadius: BorderRadius.circular(8), border: Border.all(color: widget.selected ? accent.withOpacity(.24) : Colors.transparent)),
+          child: Row(children: [AnimatedContainer(duration: const Duration(milliseconds: 180), width: 4, height: widget.selected ? 28 : 8, decoration: BoxDecoration(color: widget.selected ? accent : Colors.transparent, borderRadius: BorderRadius.circular(4))), const SizedBox(width: 10), Icon(widget.tab.icon, color: widget.selected ? accent : muted(context)), const SizedBox(width: 12), Expanded(child: Text(widget.tab.label, style: TextStyle(fontWeight: widget.selected ? FontWeight.w900 : FontWeight.w700, color: widget.selected ? accent : null)))])
         ),
       ),
     ),
   );
+  }
 }

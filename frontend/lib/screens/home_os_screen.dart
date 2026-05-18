@@ -78,7 +78,7 @@ class _Dashboard extends StatelessWidget {
             ]),
           ),
           const SizedBox(height: 16),
-          Wrap(spacing: 16, runSpacing: 16, children: const [
+          const Wrap(spacing: 16, runSpacing: 16, children: [
             _MiniCard('AI Life Coach', 'Planner, motivator and accountability coach'),
             _MiniCard('Burnout Detection', 'Adaptive recovery mode when stress rises'),
             _MiniCard('AI Memory Graph', 'Tracks weak topics and repeated mistakes'),

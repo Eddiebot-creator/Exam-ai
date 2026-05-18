@@ -32,6 +32,7 @@ class HomeScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SoftCard(
+          padding: const EdgeInsets.all(22),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 720;
@@ -46,7 +47,7 @@ class HomeScreen extends StatelessWidget {
                   Text(
                     headline,
                     style: TextStyle(
-                      fontSize: mobile ? 30 : 34,
+                      fontSize: mobile ? 28 : 32,
                       fontWeight: FontWeight.w900,
                       height: 1.05,
                     ),
@@ -85,6 +86,8 @@ class HomeScreen extends StatelessWidget {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  _MissionBars(data: data),
                   const SizedBox(height: 20),
                   Wrap(
                     spacing: 10,
@@ -179,6 +182,46 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+class _MissionBars extends StatelessWidget {
+  const _MissionBars({required this.data});
+  final StudentSnapshot data;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('${data.streak}-day streak', .72),
+      ('${data.average}% ready', data.average / 100),
+      ('${data.daysLeft} days left', (1 - (data.daysLeft / 90)).clamp(.08, 1.0)),
+      (data.examRisk, data.examRisk == 'low' ? .85 : data.examRisk == 'high' ? .32 : .58),
+      ('Level ${data.level}', .64),
+    ];
+    return Column(
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                SizedBox(width: 118, child: Text(item.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800))),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      minHeight: 9,
+                      value: item.$2.clamp(0, 1),
+                      color: CalmTheme.teal,
+                      backgroundColor: CalmTheme.teal.withOpacity(.12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class AcademicOSCommandStrip extends StatelessWidget {
   const AcademicOSCommandStrip({super.key, required this.data});
   final StudentSnapshot data;
@@ -202,7 +245,7 @@ class AcademicOSCommandStrip extends StatelessWidget {
               children: [
                 _StatusTile(label: 'Exam north star', value: '${data.daysLeft} days', icon: Icons.event_available_rounded, color: CalmTheme.teal),
                 _StatusTile(label: 'Weak area', value: data.weakTopic, icon: Icons.psychology_rounded, color: CalmTheme.orange),
-                _StatusTile(label: 'Memory loop', value: 'Reviews due', icon: Icons.style_rounded, color: CalmTheme.purple),
+                const _StatusTile(label: 'Memory loop', value: 'Reviews due', icon: Icons.style_rounded, color: CalmTheme.purple),
                 _StatusTile(label: 'Support tone', value: data.emotionalTone.replaceAll('_', ' '), icon: Icons.favorite_rounded, color: CalmTheme.rose),
               ],
             ),
@@ -234,7 +277,7 @@ class _StatusTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w800, fontSize: 12)),
+                  Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w800, fontSize: 12)),
                   const SizedBox(height: 3),
                   Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900)),
                 ],

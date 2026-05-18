@@ -126,10 +126,10 @@ class _SmartOnboardingScreenState extends State<SmartOnboardingScreen> {
                         onChanged: saving ? null : (value) => setState(() => targetScore = value),
                       ),
                       const SizedBox(height: 12),
-                      Wrap(
+                      const Wrap(
                         spacing: 10,
                         runSpacing: 10,
-                        children: const [
+                        children: [
                           CalmPill(icon: Icons.event_available_rounded, label: 'Exam countdown'),
                           CalmPill(icon: Icons.auto_graph_rounded, label: 'Readiness score'),
                           CalmPill(icon: Icons.style_rounded, label: 'Spaced review'),

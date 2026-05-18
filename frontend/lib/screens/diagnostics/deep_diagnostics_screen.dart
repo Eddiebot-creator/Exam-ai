@@ -19,7 +19,7 @@ class DeepDiagnosticsScreen extends StatelessWidget {
           CalmMetric(title: 'Readiness', value: '${data.average}%', subtitle: '${data.daysLeft} days left', icon: Icons.insights_rounded, color: CalmTheme.green),
         ]),
         const SizedBox(height: 16),
-        ResponsiveCalmGrid(minWidth: 260, children: const [
+        const ResponsiveCalmGrid(minWidth: 260, children: [
           _GapCard(title: 'Conceptual gap', body: 'The idea itself is unclear. Use analogies and small examples.', icon: Icons.lightbulb_rounded, color: CalmTheme.gold),
           _GapCard(title: 'Application gap', body: 'The idea is understood but hard to apply in new problems.', icon: Icons.code_rounded, color: CalmTheme.teal),
           _GapCard(title: 'Exam-format gap', body: 'The student knows the topic but misses how exams ask it.', icon: Icons.edit_document, color: CalmTheme.orange),

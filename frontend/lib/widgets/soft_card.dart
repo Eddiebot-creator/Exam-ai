@@ -23,9 +23,9 @@ class _SoftCardState extends State<SoftCard> {
       transform: Matrix4.identity()..translate(0.0, hover && widget.onTap != null ? -2.0 : 0.0),
       padding: widget.padding,
       decoration: BoxDecoration(
-        color: dark ? Colors.white.withOpacity(.055) : Colors.white.withOpacity(.94),
+        color: dark ? const Color(0xff142a25).withOpacity(.96) : Colors.white.withOpacity(.93),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: dark ? Colors.white.withOpacity(.09) : const Color(0xffd9e5e2)),
+        border: Border.all(color: dark ? const Color(0xff2d4a43) : const Color(0xffd7ebe4)),
         boxShadow: softShadow(context),
       ),
       child: widget.child,

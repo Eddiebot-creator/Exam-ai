@@ -41,7 +41,7 @@ class _OfflineFirstScreenState extends State<OfflineFirstScreen> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionIntro(icon: Icons.offline_bolt_rounded, title: 'Offline-First Reliability', subtitle: 'Notes, plans, quizzes, and progress stay useful when internet is unstable, then sync later.', mascot: StudentMascot(size: 100, mood: MascotMood.focus)),
         const SizedBox(height: 16),
-        ResponsiveCalmGrid(minWidth: 230, children: const [
+        const ResponsiveCalmGrid(minWidth: 230, children: [
           CalmMetric(title: 'Notes', value: 'Cached', subtitle: 'read anywhere', icon: Icons.folder_copy_rounded, color: CalmTheme.teal),
           CalmMetric(title: 'Quizzes', value: 'Offline', subtitle: 'answers queue', icon: Icons.quiz_rounded, color: CalmTheme.purple),
           CalmMetric(title: 'Sync', value: 'Later', subtitle: 'no work lost', icon: Icons.sync_rounded, color: CalmTheme.green),

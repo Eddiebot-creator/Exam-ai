@@ -23,33 +23,37 @@ class CalmPill extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: CalmTheme.teal.withOpacity(.10),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: CalmTheme.teal.withOpacity(.22)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: CalmTheme.teal),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = dark ? CalmTheme.glowTeal : CalmTheme.teal;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: accent.withOpacity(dark ? .12 : .10),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: accent.withOpacity(dark ? .20 : .22)),
         ),
-      );
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: accent),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: dark ? const Color(0xffdff8f3) : null),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class CircleIcon extends StatelessWidget {
@@ -57,12 +61,15 @@ class CircleIcon extends StatelessWidget {
   final IconData icon;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
         width: 40,
         height: 40,
-        decoration: BoxDecoration(color: color.withOpacity(.14), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: color.withOpacity(dark ? .18 : .14), borderRadius: BorderRadius.circular(8)),
         child: Icon(icon, color: color),
       );
+  }
 }
 
 class ResponsiveCalmGrid extends StatelessWidget {

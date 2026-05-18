@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import '../theme/calm_theme.dart';
 
-Color muted(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? Colors.white70 : CalmTheme.softInk;
-Color cardColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(.06) : Colors.white;
-Color dividerColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(.10) : const Color(0xffdcefed);
+Color muted(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xffb8c9c4) : CalmTheme.softInk;
+Color cardColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? CalmTheme.nightPanel : Colors.white;
+Color dividerColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark ? const Color(0xff24423b) : const Color(0xffd4e8e2);
 
 List<BoxShadow> softShadow(BuildContext context) {
   final dark = Theme.of(context).brightness == Brightness.dark;
-  return [BoxShadow(color: dark ? Colors.black.withOpacity(.25) : const Color(0xff0f766e).withOpacity(.08), blurRadius: 28, offset: const Offset(0, 14))];
+  return [BoxShadow(color: dark ? Colors.black.withOpacity(.32) : const Color(0xff0f766e).withOpacity(.08), blurRadius: dark ? 22 : 28, offset: const Offset(0, 14))];
 }
 
 void toast(BuildContext context, String message) {

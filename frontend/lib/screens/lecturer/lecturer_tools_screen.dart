@@ -26,7 +26,7 @@ class _LecturerToolsScreenState extends State<LecturerToolsScreen> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionIntro(icon: Icons.co_present_rounded, title: 'Lecturer And School Tools', subtitle: 'Turn uploaded materials into course codes, revision packs, and anonymized class-wide weak-area insight.', mascot: StudentMascot(size: 100, mood: MascotMood.wave)),
         const SizedBox(height: 16),
-        ResponsiveCalmGrid(minWidth: 230, children: const [
+        const ResponsiveCalmGrid(minWidth: 230, children: [
           CalmMetric(title: 'Slides', value: 'Upload', subtitle: 'generate content', icon: Icons.upload_file_rounded, color: CalmTheme.teal),
           CalmMetric(title: 'Course code', value: 'Instant', subtitle: 'students join fast', icon: Icons.qr_code_rounded, color: CalmTheme.indigo),
           CalmMetric(title: 'Insights', value: 'Private', subtitle: 'anonymized only', icon: Icons.analytics_rounded, color: CalmTheme.green),

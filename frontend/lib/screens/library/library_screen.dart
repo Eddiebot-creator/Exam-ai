@@ -96,18 +96,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
           duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.easeOutCubic,
           child: busy
-              ? Padding(
-                  key: const ValueKey('library-processing'),
-                  padding: const EdgeInsets.only(top: 12),
+              ? const Padding(
+                  key: ValueKey('library-processing'),
+                  padding: EdgeInsets.only(top: 12),
                   child: SoftCard(
                     child: Row(
                       children: [
-                        const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6)),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.6)),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text('Processing study material', style: TextStyle(fontWeight: FontWeight.w900)),
                               SizedBox(height: 3),
                               SoftText('Extracting text, saving it, and preparing quiz material.'),

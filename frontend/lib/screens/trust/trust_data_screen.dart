@@ -25,7 +25,7 @@ class _TrustDataScreenState extends State<TrustDataScreen> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionIntro(icon: Icons.privacy_tip_rounded, title: 'Your Data', subtitle: 'See what ExamAI stores, export it, and delete learning data when you want control back.', mascot: StudentMascot(size: 100, mood: MascotMood.focus)),
         const SizedBox(height: 16),
-        ResponsiveCalmGrid(minWidth: 230, children: const [
+        const ResponsiveCalmGrid(minWidth: 230, children: [
           CalmMetric(title: 'Control', value: 'Export', subtitle: 'transparent records', icon: Icons.file_download_rounded, color: CalmTheme.teal),
           CalmMetric(title: 'Consent', value: 'Student-first', subtitle: 'sharing is optional', icon: Icons.verified_user_rounded, color: CalmTheme.green),
           CalmMetric(title: 'Delete', value: 'Instant', subtitle: 'learning history reset', icon: Icons.delete_outline_rounded, color: CalmTheme.rose),

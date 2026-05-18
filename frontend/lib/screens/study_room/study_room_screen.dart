@@ -42,7 +42,7 @@ class _StudyRoomScreenState extends State<StudyRoomScreen> {
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const SectionIntro(icon: Icons.groups_rounded, title: 'Study With Friends', subtitle: 'Small rooms, shared focus, peer accountability, and quiz momentum for real student groups.', mascot: StudentMascot(size: 100, mood: MascotMood.happy)),
         const SizedBox(height: 16),
-        ResponsiveCalmGrid(minWidth: 230, children: const [
+        const ResponsiveCalmGrid(minWidth: 230, children: [
           CalmMetric(title: 'Room size', value: '2-6', subtitle: 'focused classmates', icon: Icons.group_rounded, color: CalmTheme.teal),
           CalmMetric(title: 'Invites', value: 'Share', subtitle: 'WhatsApp-ready code', icon: Icons.ios_share_rounded, color: CalmTheme.green),
           CalmMetric(title: 'Mode', value: 'Live', subtitle: 'timers and quiz streaks', icon: Icons.timer_rounded, color: CalmTheme.orange),

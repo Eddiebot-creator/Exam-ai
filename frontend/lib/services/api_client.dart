@@ -58,7 +58,7 @@ Future<Map<String, dynamic>> engineDashboard(int userId) async => _map(await htt
   }
 
   Future<Map<String, dynamic>> aiChat(int userId, int? noteId, String message) async {
-    final path = '/ai/chat';
+    const path = '/ai/chat';
     final response = await http.post(Uri.parse('$baseUrl$path'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'user_id': userId, 'note_id': noteId, 'message': message})).timeout(const Duration(seconds: 60));
     return _map(response);
   }
