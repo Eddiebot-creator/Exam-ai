@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from sqlalchemy import MetaData, Table
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from database import get_db, Note, Flashcard, Mcq
 from services.learning_engine import clean_text, extract_text, detect_topics, make_summary, make_flashcards, make_mcqs
 from services.ai_service import generate_flashcards as ai_flashcards, generate_mcqs as ai_mcqs, summarize_text
+from datetime import datetime
 import os
 
 router = APIRouter(prefix='/notes', tags=['Notes / Smart Note Engine'])
@@ -35,8 +37,10 @@ def _create_text_note(p: dict, db: Session):
         db.add(n)
         db.commit()
         db.refresh(n)
-        gen(db, user_id, n)
-        return payload(n)
+        generated = gen(db, user_id, n)
+        data = payload(n)
+        data["generated"] = generated
+        return data
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(500, f'Note database error: {str(exc)}')
@@ -153,11 +157,20 @@ def gen(db, user_id, n):
         if not questions:
             questions = make_mcqs(user_id, n.id, text, topics)
 
+        flashcard_table = _reflected_table(db, 'flashcards')
+        mcq_table = _reflected_table(db, 'mcqs')
+
         for x in cards:
-            db.add(Flashcard(**x))
+            if flashcard_table is None:
+                db.add(Flashcard(**x))
+            else:
+                db.execute(flashcard_table.insert().values(**_flashcard_values(flashcard_table, x)))
             flashcard_count += 1
         for x in questions:
-            db.add(Mcq(**x))
+            if mcq_table is None:
+                db.add(Mcq(**x))
+            else:
+                db.execute(mcq_table.insert().values(**_mcq_values(mcq_table, x)))
             mcq_count += 1
         db.commit()
         return {'flashcards': flashcard_count, 'mcqs': mcq_count}
@@ -166,6 +179,61 @@ def gen(db, user_id, n):
         db.rollback()
         print("Material generation failed:", exc)
         return {'flashcards': 0, 'mcqs': 0, 'error': 'Study material generation is warming up. Try regenerate in a moment.'}
+
+def _reflected_table(db, name):
+    try:
+        return Table(name, MetaData(), autoload_with=db.bind)
+    except Exception as exc:
+        print(f"Reflect {name} failed:", exc)
+        return None
+
+def _has(table, column):
+    return column in table.c
+
+def _flashcard_values(table, item):
+    now = datetime.utcnow()
+    data = {}
+    question = item.get('question') or item.get('front_text') or 'Review this concept'
+    answer = item.get('answer') or item.get('back_text') or 'Review your note for this answer.'
+    for key, value in {
+        'user_id': item.get('user_id'),
+        'note_id': item.get('note_id'),
+        'topic': item.get('topic') or 'General',
+        'question': question,
+        'answer': answer,
+        'front_text': question,
+        'back_text': answer,
+        'mastered': False,
+        'ease': 2.5,
+        'interval_days': 1,
+        'due_at': now,
+        'created_at': now,
+    }.items():
+        if _has(table, key):
+            data[key] = value
+    return data
+
+def _mcq_values(table, item):
+    now = datetime.utcnow()
+    options = item.get('options') or []
+    answer_index = int(item.get('answer_index', 0) or 0)
+    correct_letter = ['A', 'B', 'C', 'D'][max(0, min(3, answer_index))]
+    data = {}
+    for key, value in {
+        'user_id': item.get('user_id'),
+        'note_id': item.get('note_id'),
+        'topic': item.get('topic') or 'General',
+        'question': item.get('question') or 'What is the best answer?',
+        'options': options,
+        'answer_index': answer_index,
+        'correct_answer': correct_letter,
+        'answer': correct_letter,
+        'explanation': item.get('explanation') or 'Review this concept in your note.',
+        'created_at': now,
+    }.items():
+        if _has(table, key):
+            data[key] = value
+    return data
 
 def payload(n):
     return {
