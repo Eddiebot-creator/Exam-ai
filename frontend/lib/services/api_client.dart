@@ -38,7 +38,9 @@ class ApiClient {
   Future<List<dynamic>> notes(int userId) async => _list(await http.get(Uri.parse('$baseUrl/notes?user_id=$userId')).timeout(const Duration(seconds: 25)));
   Future<List<dynamic>> history(int userId) async => _list(await http.get(Uri.parse('$baseUrl/quiz/history?user_id=$userId')).timeout(const Duration(seconds: 25)));
   Future<Map<String, dynamic>> progress(int userId) async => _map(await http.get(Uri.parse('$baseUrl/progress/$userId')).timeout(const Duration(seconds: 25)));
-  Future<Map<String, dynamic>> engineDashboard(int userId) async => _map(await http.get(Uri.parse('$baseUrl/engine/dashboard/$userId')).timeout(const Duration(seconds: 25)));
+Future<Map<String, dynamic>> engineDashboard(int userId) async => _map(await http.get(Uri.parse('$baseUrl/engine/dashboard/$userId')).timeout(const Duration(seconds: 25)));
+  Future<Map<String, dynamic>> healthDeep() async => _map(await http.get(Uri.parse('$baseUrl/health/deep')).timeout(const Duration(seconds: 25)));
+  Future<Map<String, dynamic>> healthSchema() async => _map(await http.get(Uri.parse('$baseUrl/health/schema')).timeout(const Duration(seconds: 25)));
 
   Future<Map<String, dynamic>> createTextNote(int userId, String title, String text) async {
     final response = await http.post(Uri.parse('$baseUrl/notes/text'), headers: {'Content-Type': 'application/json'}, body: jsonEncode({'user_id': userId, 'title': title, 'text': text})).timeout(const Duration(seconds: 40));

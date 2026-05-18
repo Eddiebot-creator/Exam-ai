@@ -6,6 +6,7 @@ import '../../services/offline_cache_service.dart';
 import '../../widgets/calm_background.dart';
 import '../../widgets/navigation.dart';
 import '../focus/focus_mode_screen.dart';
+import '../admin/system_health_screen.dart';
 import '../diagnostics/deep_diagnostics_screen.dart';
 import '../lecturer/lecturer_tools_screen.dart';
 import '../library/library_screen.dart';
@@ -61,6 +62,7 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
     AppTab('Voice', Icons.record_voice_over_rounded),
     AppTab('Diagnostics', Icons.psychology_alt_rounded),
     AppTab('Your Data', Icons.privacy_tip_rounded),
+    AppTab('System', Icons.health_and_safety_rounded),
     AppTab('OS Hub', Icons.apps_rounded),
     AppTab('Profile', Icons.person_rounded),
   ];
@@ -145,7 +147,8 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
             10 => VoiceTutorScreen(focusTopic: data.weakTopic),
             11 => DeepDiagnosticsScreen(data: data),
             12 => TrustDataScreen(api: widget.api, userId: userId, onChanged: refresh),
-            13 => ToolsScreen(data: data, goRooms: () => setState(() => index = 6), goOffline: () => setState(() => index = 7), goSchool: () => setState(() => index = 8), goLecturer: () => setState(() => index = 9), goVoice: () => setState(() => index = 10), goDiagnostics: () => setState(() => index = 11)),
+            13 => SystemHealthScreen(api: widget.api),
+            14 => ToolsScreen(data: data, goRooms: () => setState(() => index = 6), goOffline: () => setState(() => index = 7), goSchool: () => setState(() => index = 8), goLecturer: () => setState(() => index = 9), goVoice: () => setState(() => index = 10), goDiagnostics: () => setState(() => index = 11)),
             _ => ProfileScreen(user: widget.user, apiBase: widget.api.baseUrl, onLogout: widget.onLogout, onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode, api: widget.api, userId: userId, onUserChanged: widget.onUserChanged),
           },
         ),

@@ -42,11 +42,19 @@ class _TutorScreenState extends State<TutorScreen> {
 
   bool sending = false;
   bool loadingHistory = true;
+  int? selectedNoteId;
 
   @override
   void initState() {
     super.initState();
+    _syncSelectedNote();
     _loadHistory();
+  }
+
+  @override
+  void didUpdateWidget(covariant TutorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.notes.length != widget.notes.length) _syncSelectedNote();
   }
 
   @override
@@ -113,6 +121,15 @@ class _TutorScreenState extends State<TutorScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
+                      if (widget.notes.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _NoteSelector(
+                            notes: widget.notes,
+                            selectedNoteId: selectedNoteId,
+                            onChanged: sending ? null : (value) => setState(() => selectedNoteId = value),
+                          ),
+                        ),
                       for (final prompt in [
                         'Explain this like I am 12 using simple examples.',
                         'Generate 5 MCQs from my uploaded note.',
@@ -155,6 +172,17 @@ class _TutorScreenState extends State<TutorScreen> {
         ),
       ],
     );
+  }
+
+  void _syncSelectedNote() {
+    if (widget.notes.isEmpty) {
+      selectedNoteId = null;
+      return;
+    }
+    final ids = widget.notes.map((note) => ((note as Map)['id'] as num?)?.toInt()).whereType<int>().toSet();
+    if (selectedNoteId == null || !ids.contains(selectedNoteId)) {
+      selectedNoteId = ids.isEmpty ? null : ids.first;
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -251,13 +279,9 @@ class _TutorScreenState extends State<TutorScreen> {
     _scrollToBottom();
 
     try {
-      final noteId = widget.notes.isNotEmpty
-          ? (widget.notes.first as Map)['id'] as int?
-          : null;
-
       final response = await widget.api.aiChat(
         widget.userId,
-        noteId,
+        selectedNoteId,
         text,
       );
 
@@ -296,6 +320,57 @@ class _TutorScreenState extends State<TutorScreen> {
         curve: Curves.easeOutCubic,
       );
     });
+  }
+}
+
+class _NoteSelector extends StatelessWidget {
+  const _NoteSelector({required this.notes, required this.selectedNoteId, required this.onChanged});
+
+  final List<dynamic> notes;
+  final int? selectedNoteId;
+  final ValueChanged<int?>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: CalmTheme.teal.withOpacity(.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: CalmTheme.teal.withOpacity(.22)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: selectedNoteId,
+          icon: const Icon(Icons.expand_more_rounded),
+          hint: const Text('Use note'),
+          borderRadius: BorderRadius.circular(8),
+          onChanged: onChanged,
+          items: [
+            for (final note in notes)
+              if (((note as Map)['id'] as num?) != null)
+              DropdownMenuItem<int>(
+                value: (note['id'] as num).toInt(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.description_rounded, size: 18, color: CalmTheme.teal),
+                    const SizedBox(width: 8),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: Text(
+                        note['title']?.toString() ?? 'Note',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

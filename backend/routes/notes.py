@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from database import get_db, Note, Flashcard, Mcq
 from services.learning_engine import clean_text, extract_text, detect_topics, make_summary, make_flashcards, make_mcqs
+from services.ai_service import generate_flashcards as ai_flashcards, generate_mcqs as ai_mcqs, summarize_text
 import os
 
 router = APIRouter(prefix='/notes', tags=['Notes / Smart Note Engine'])
@@ -30,7 +31,7 @@ def _create_text_note(p: dict, db: Session):
         raise HTTPException(400, 'Paste a note before saving.')
     try:
         topics = detect_topics(text)
-        n = Note(user_id=user_id, title=title, extracted_text=text, topics=topics, summary=make_summary(text))
+        n = Note(user_id=user_id, title=title, extracted_text=text, topics=topics, summary=summarize_text(text, "short"))
         db.add(n)
         db.commit()
         db.refresh(n)
@@ -114,10 +115,48 @@ def gen(db, user_id, n):
     flashcard_count = 0
     mcq_count = 0
     try:
-        for x in make_flashcards(user_id, n.id, n.extracted_text or '', n.topics or []):
+        text = n.extracted_text or ''
+        topics = n.topics or []
+        topic = topics[0] if topics else 'General'
+        cards = []
+        try:
+            cards = [
+                {
+                    'user_id': user_id,
+                    'note_id': n.id,
+                    'topic': topic,
+                    'question': item.get('front_text') or item.get('question') or 'Review this concept',
+                    'answer': item.get('back_text') or item.get('answer') or 'Review your note for this answer.',
+                }
+                for item in ai_flashcards(text, count=10)
+            ]
+        except Exception as exc:
+            print("AI flashcards failed:", exc)
+        if not cards:
+            cards = make_flashcards(user_id, n.id, text, topics)
+
+        questions = []
+        try:
+            letters = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+            for item in ai_mcqs(text, count=8, difficulty='medium'):
+                questions.append({
+                    'user_id': user_id,
+                    'note_id': n.id,
+                    'topic': topic,
+                    'question': item.get('question') or 'What is the best answer?',
+                    'options': item.get('options') or [],
+                    'answer_index': letters.get(str(item.get('correct_answer', 'A')).upper()[:1], 0),
+                    'explanation': item.get('explanation') or 'Review this concept in your note.',
+                })
+        except Exception as exc:
+            print("AI MCQs failed:", exc)
+        if not questions:
+            questions = make_mcqs(user_id, n.id, text, topics)
+
+        for x in cards:
             db.add(Flashcard(**x))
             flashcard_count += 1
-        for x in make_mcqs(user_id, n.id, n.extracted_text or '', n.topics or []):
+        for x in questions:
             db.add(Mcq(**x))
             mcq_count += 1
         db.commit()
