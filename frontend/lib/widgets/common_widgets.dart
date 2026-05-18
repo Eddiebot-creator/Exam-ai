@@ -17,6 +17,42 @@ class SoftText extends StatelessWidget {
       );
 }
 
+class StaggeredReveal extends StatelessWidget {
+  const StaggeredReveal({super.key, required this.child, this.delay = Duration.zero, this.offset = 14});
+  final Widget child;
+  final Duration delay;
+  final double offset;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 420 + delay.inMilliseconds),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          final delayed = delay.inMilliseconds == 0 ? value : ((value * (420 + delay.inMilliseconds) - delay.inMilliseconds) / 420).clamp(0.0, 1.0);
+          return Opacity(
+            opacity: delayed,
+            child: Transform.translate(offset: Offset(0, offset * (1 - delayed)), child: child),
+          );
+        },
+        child: child,
+      );
+}
+
+class AnimatedSection extends StatelessWidget {
+  const AnimatedSection({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < children.length; i++)
+            StaggeredReveal(delay: Duration(milliseconds: i * 42), child: children[i]),
+        ],
+      );
+}
+
 class CalmPill extends StatelessWidget {
   const CalmPill({super.key, required this.icon, required this.label, this.onTap});
   final IconData icon;
@@ -123,7 +159,8 @@ class SectionIntro extends StatelessWidget {
               ),
             ],
           );
-          return SoftCard(
+          return StaggeredReveal(
+            child: SoftCard(
             child: mobile
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,6 +176,7 @@ class SectionIntro extends StatelessWidget {
                       if (mascot != null) mascot!,
                     ],
                   ),
+            ),
           );
         },
       );
@@ -150,7 +188,8 @@ class CalmMetric extends StatelessWidget {
   final IconData icon;
   final Color color;
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => StaggeredReveal(
+        child: SoftCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -163,6 +202,7 @@ class CalmMetric extends StatelessWidget {
             Text(subtitle, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
           ],
         ),
+      ),
       );
 }
 
@@ -172,10 +212,11 @@ class EmptyCalmState extends StatelessWidget {
   final String title;
   final String message;
   @override
-  Widget build(BuildContext context) => SoftCard(
+  Widget build(BuildContext context) => StaggeredReveal(
+        child: SoftCard(
         child: Column(
           children: [
-            const StudentMascot(size: 100, mood: MascotMood.wave),
+            const _FloatingMascot(),
             Icon(icon, color: CalmTheme.teal),
             const SizedBox(height: 8),
             Text(title, style: Theme.of(context).textTheme.titleLarge),
@@ -183,6 +224,37 @@ class EmptyCalmState extends StatelessWidget {
             SoftText(message, align: TextAlign.center),
           ],
         ),
+      ),
+      );
+}
+
+class _FloatingMascot extends StatefulWidget {
+  const _FloatingMascot();
+
+  @override
+  State<_FloatingMascot> createState() => _FloatingMascotState();
+}
+
+class _FloatingMascotState extends State<_FloatingMascot> with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) => Transform.translate(offset: Offset(0, -4 * controller.value), child: child),
+        child: const StudentMascot(size: 100, mood: MascotMood.wave),
       );
 }
 

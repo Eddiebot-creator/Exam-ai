@@ -27,7 +27,7 @@ class ToolsScreen extends StatelessWidget {
   final VoidCallback goDiagnostics;
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget build(BuildContext context) => AnimatedSection(children: [
         const SectionIntro(icon: Icons.dashboard_customize_rounded, title: 'Academic OS Hub', subtitle: 'Everything that turns ExamAI from a study helper into a full student operating system.', mascot: StudentMascot(size: 100, mood: MascotMood.celebrate)),
         const SizedBox(height: 16),
         ResponsiveCalmGrid(minWidth: 230, children: [

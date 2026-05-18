@@ -4,6 +4,7 @@ import '../../models/student_snapshot.dart';
 import '../../services/api_client.dart';
 import '../../services/offline_cache_service.dart';
 import '../../widgets/calm_background.dart';
+import '../../widgets/common_widgets.dart';
 import '../../widgets/navigation.dart';
 import '../focus/focus_mode_screen.dart';
 import '../admin/system_health_screen.dart';
@@ -133,7 +134,8 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
             MediaQuery.sizeOf(context).width < 430 ? 12 : 22,
             90,
           ),
-          child: switch (index) {
+          child: AnimatedSection(children: [
+            switch (index) {
             0 => HomeScreen(firstName: firstName, data: data, loading: loading, goTutor: () => setState(() => index = 1), goTasks: () => setState(() => index = 2), goLibrary: () => setState(() => index = 3), goFocus: () => setState(() => index = 4)),
             1 => TutorScreen(api: widget.api, userId: userId, notes: notes, onVoice: () => setState(() => index = 10)),
             2 => TasksScreen(data: data, api: widget.api, userId: userId, onChanged: refresh),
@@ -151,6 +153,7 @@ class _CalmStudentAppState extends State<CalmStudentApp> {
             14 => ToolsScreen(data: data, goRooms: () => setState(() => index = 6), goOffline: () => setState(() => index = 7), goSchool: () => setState(() => index = 8), goLecturer: () => setState(() => index = 9), goVoice: () => setState(() => index = 10), goDiagnostics: () => setState(() => index = 11)),
             _ => ProfileScreen(user: widget.user, apiBase: widget.api.baseUrl, onLogout: widget.onLogout, onThemeToggle: widget.onThemeToggle, themeMode: widget.themeMode, api: widget.api, userId: userId, onUserChanged: widget.onUserChanged),
           },
+          ]),
         ),
       ),
     );

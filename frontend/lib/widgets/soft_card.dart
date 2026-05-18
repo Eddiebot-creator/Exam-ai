@@ -13,6 +13,7 @@ class SoftCard extends StatefulWidget {
 
 class _SoftCardState extends State<SoftCard> {
   bool hover = false;
+  bool down = false;
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,7 @@ class _SoftCardState extends State<SoftCard> {
     final body = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      transform: Matrix4.identity()..translate(0.0, hover && widget.onTap != null ? -2.0 : 0.0),
+      transform: Matrix4.identity()..translate(0.0, hover && widget.onTap != null ? -3.0 : 0.0),
       padding: widget.padding,
       decoration: BoxDecoration(
         color: dark ? const Color(0xff142a25).withOpacity(.96) : Colors.white.withOpacity(.93),
@@ -33,7 +34,20 @@ class _SoftCardState extends State<SoftCard> {
     return MouseRegion(
       onEnter: (_) => setState(() => hover = true),
       onExit: (_) => setState(() => hover = false),
-      child: widget.onTap == null ? body : InkWell(borderRadius: BorderRadius.circular(8), onTap: widget.onTap, child: body),
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 120),
+        scale: down ? .99 : 1,
+        child: widget.onTap == null
+            ? body
+            : InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: widget.onTap,
+                onTapDown: (_) => setState(() => down = true),
+                onTapUp: (_) => setState(() => down = false),
+                onTapCancel: () => setState(() => down = false),
+                child: body,
+              ),
+      ),
     );
   }
 }

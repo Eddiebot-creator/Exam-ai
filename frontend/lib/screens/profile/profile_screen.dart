@@ -83,8 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return AnimatedSection(
       children: [
         SectionIntro(
           icon: Icons.person_rounded,

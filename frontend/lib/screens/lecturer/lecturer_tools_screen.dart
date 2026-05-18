@@ -23,7 +23,7 @@ class _LecturerToolsScreenState extends State<LecturerToolsScreen> {
   bool busy = false;
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget build(BuildContext context) => AnimatedSection(children: [
         const SectionIntro(icon: Icons.co_present_rounded, title: 'Lecturer And School Tools', subtitle: 'Turn uploaded materials into course codes, revision packs, and anonymized class-wide weak-area insight.', mascot: StudentMascot(size: 100, mood: MascotMood.wave)),
         const SizedBox(height: 16),
         const ResponsiveCalmGrid(minWidth: 230, children: [

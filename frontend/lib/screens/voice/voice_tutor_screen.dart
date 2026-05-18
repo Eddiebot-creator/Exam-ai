@@ -19,7 +19,7 @@ class _VoiceTutorScreenState extends State<VoiceTutorScreen> {
   bool noisyMode = true;
 
   @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget build(BuildContext context) => AnimatedSection(children: [
         const SectionIntro(icon: Icons.record_voice_over_rounded, title: 'Voice And Local Language Tutor', subtitle: 'Hands-free study for commuting, hostels, buses, and students who learn best by speaking.', mascot: StudentMascot(size: 100, mood: MascotMood.happy)),
         const SizedBox(height: 16),
         ResponsiveCalmGrid(minWidth: 230, children: [
